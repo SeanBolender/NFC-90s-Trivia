@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>90s NFC Hunt - Game</title>
+    <style>
+        /* (Use the same styling from start.html for consistency) */
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f0f8ff; color: #1e3a8a; }
+        .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); }
+        h2 { color: #008080; margin-top: 5px; }
+        .question-box { margin: 25px 0; padding: 25px; border: 3px dashed #FFD700; border-radius: 8px; background-color: #fff9c4; }
+        input[type="text"] { padding: 10px; margin: 10px 0; width: 80%; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 12px 25px; margin-top: 15px; background-color: #FF69B4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .error { color: #b91c1c; font-weight: bold; }
+        .success { color: #10b981; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="game-title">90s Time Warp Hunt</h1>
+        <div id="game-content">Loading game...</div>
+    </div>
+
+    <script>
+        // =======================================================================================
+        // NOTE: UPDATE THESE TWO VARIABLES AFTER PHASE 3!
+        // =======================================================================================
+        const POST_URL = "https://script.google.com/macros/s/AKfycbyut9bMCYxvqx0X3orKeCXVEZQ7QS1cK2FpcJkOOmbW-pueKn6B7xNCRL6WgNYgSqOE/exec"; // Paste your Google Apps Script URL here
+        
+        // --- Game Data (Your Trivia) ---
+        const gameData = {
+            sequence: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10'],
+            Q0: { // Starting state: Not a question, just a message
+                clue: "Find the first NFC chip on the **NSYNC Cutout**."
+            },
+            Q1: {
+                title: "Q1: 🎶 Pop Music",
+                question: "Which group, known for hits like 'Bye Bye Bye,' was founded in 1995 but had its name taken from a famous attraction at Disney World?",
+                correctAnswer: "NSYNC",
+                clue: "Correct! Your next challenge is found by the **Game Boy**.",
+                nextTag: "Q2"
+            },
+            Q2: {
+                title: "Q2: 🕹️ Gaming",
+                question: "What highly addictive puzzle game, invented in the 80s, was included with the purchase of every original Game Boy console?",
+                correctAnswer: "TETRIS",
+                clue: "Awesome! The next chip is taped inside the **Michael Jordan TV Guide**.",
+                nextTag: "Q3"
+            },
+            Q3: {
+                title: "Q3: 🏀 Sports",
+                question: "What iconic number did Michael Jordan wear for most of his career with the Chicago Bulls, and when he played on the 1992 Dream Team?",
+                correctAnswer: "23",
+                clue: "Slam dunk! Your next clue is near the lovable nerd's **favorite cheese snack**.",
+                nextTag: "Q4"
+            },
+            // ... [ADD Q4 through Q9 HERE, including correct answers and clues] ...
+            Q10: {
+                title: "Q10: 👻 Film Finale",
+                question: "The shocking final reveal and famous line ('I see dead people') belong to which psychological thriller film?",
+                correctAnswer: "THE SIXTH SENSE",
+                clue: "🎉 CONGRATULATIONS! The code is **90SBOOM**. Go to the **freezer** for your grand prize!",
+                nextTag: "WIN"
+            },
+            WIN: {
+                title: "🎉 Hunt Complete!",
+                content: "You mastered the 90s Time Warp! Proceed to the freezer with the code **90SBOOM**."
+            }
+        };
+
+        // --- Global Variables (Read from URL) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const teamName = urlParams.get('team'); // The team name (permanent ID)
+        const currentStep = urlParams.get('step'); // The last answered question (Q0, Q1, Q2...)
+        const tagID = urlParams.get('q'); // The tag the player just scanned (Q1, Q2...)
+        
+        const gameContent = document.getElementById('game-content');
+
+        // --- Core Functions ---
+        
+        // 1. Logs the answer to Google Sheet via the script URL
+        async function logAnswer(questionID, answer, correct) {
+            const data = {
+                Team: teamName,
+                Question: questionID,
+                Answer: answer,
+                Correct: correct ? 'YES' : 'NO'
+            };
+
+            // Sends data to the Google Apps Script POST_URL
+            await fetch(POST_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Required for Google Scripts
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+        }
+        
+        // 2. Submits the answer
+        async function submitAnswer(questionID, correctAnswer) {
+            const answerInput = document.getElementById('answer-input');
+            const rawAnswer = answerInput ? answerInput.value.trim() : '';
+            const submittedAnswer = rawAnswer.toUpperCase();
+            const isCorrect = submittedAnswer === correctAnswer.toUpperCase();
+
+            // Log the result before proceeding
+            await logAnswer(questionID, submittedAnswer, isCorrect);
+
+            if (isCorrect) {
+                const nextTag = gameData[questionID].nextTag;
+                const nextClue = gameData[questionID].clue;
+                
+                // Redirects the player to their *new* permanent link with the updated step
+                if (nextTag === 'WIN') {
+                    showFinalMessage(gameData.WIN);
+                } else {
+                    const nextLink = `?team=${teamName}&step=${nextTag}`;
+                    showFeedback(true, nextClue, nextLink);
+                }
+            } else {
+                showFeedback(false, `❌ Incorrect! Try again, ${teamName}.`);
+            }
+        }
+        
+        // 3. Game Initialization
+        function initializeGame() {
+            // Check if the page was opened without a required team name
+            if (!teamName || teamName.length < 3) {
+                // Redirect to the start page to get a team name
+                window.location.href = 'start.html'; 
+                return;
+            }
+
+            // A. Check if the player is at the START (Q0)
+            if (currentStep === 'Q0' && !tagID) {
+                showFeedback(true, gameData.Q0.clue);
+                return;
+            }
+
+            // B. Check if the player is at the right sequential step
+            const expectedNextTagIndex = gameData.sequence.indexOf(currentStep) + 1;
+            const expectedNextTag = gameData.sequence[expectedNextTagIndex];
+
+            // Lockout check
+            if (tagID && tagID !== expectedNextTag) {
+                showLockout(expectedNextTag);
+                return;
+            }
+            
+            // C. Correct Scan (tagID should equal expectedNextTag)
+            if (tagID && tagID === expectedNextTag) {
+                // Clear the URL tag so the user doesn't answer again on a refresh
+                const baseLink = `?team=${teamName}&step=${currentStep}`;
+                history.replaceState(null, null, baseLink);
+
+                showQuestion(gameData[tagID], tagID);
+                return;
+            }
+            
+            // D. Player is on their permanent link but hasn't scanned the next chip yet
+            if (!tagID) {
+                 const nextClueData = gameData[currentStep]; // The step they just completed
+                 showFeedback(true, nextClueData.clue); // Remind them of the last clue/next step
+            }
+        }
+
+        // --- UI Functions ---
+        
+        function showQuestion(data, id) {
+             gameContent.innerHTML = `
+                <div class="question-box">
+                    <h2>${data.title}</h2>
+                    <p><strong>Team ${teamName}, what is your answer?</strong></p>
+                    <p>${data.question}</p>
+                    <input type="text" id="answer-input" placeholder="Type your answer here" />
+                    <button onclick="submitAnswer('${id}', '${data.correctAnswer}')">Submit Answer</button>
+                </div>
+            `;
+        }
+
+        function showFeedback(isCorrect, message, nextLink) {
+            let feedbackHTML = isCorrect ? 
+                `<h2 class="success">✅ SUCCESS!</h2><p>${message}</p>` :
+                `<h2 class="error">❌ Incorrect!</h2><p>${message}</p>`;
+
+            if (nextLink) {
+                // If there's a next link, update the browser URL before showing the clue
+                history.replaceState(null, null, nextLink);
+                feedbackHTML += `<p>Find the NFC chip at the location above!</p>`;
+            }
+            
+            gameContent.innerHTML = `<div class="question-box">${feedbackHTML}</div>`;
+        }
+        
+        function showLockout(expectedTag) {
+            const expectedClue = gameData[gameData.sequence[gameData.sequence.indexOf(currentStep) + 1]].clue;
+            gameContent.innerHTML = `<div class="question-box error">
+                <h2>🚫 HOLD IT, ${teamName}!</h2>
+                <p>You must complete **${currentStep}** before scanning **${expectedTag}**.</p>
+                <p>Your current task is: <strong>${expectedClue}</strong></p>
+            </div>`;
+        }
+        
+        function showFinalMessage(data) {
+             gameContent.innerHTML = `
+                <div class="question-box">
+                    <h2 class="success">${data.title}</h2>
+                    <p>${data.content}</p>
+                    <button onclick="window.location.href='start.html'">Restart Game</button>
+                </div>
+            `;
+        }
+
+        // Execute the game start
+        initializeGame();
+    </script>
+</body>
+</html>

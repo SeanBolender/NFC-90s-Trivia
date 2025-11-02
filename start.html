@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Hunt - Name Entry</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f0f8ff; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #800080; }
+        input { padding: 10px; margin: 15px 0; width: 90%; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 12px 20px; background-color: #FF69B4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the 90s Hunt!</h1>
+        <p>Enter your team name to generate your unique game link:</p>
+        <input type="text" id="team-name" placeholder="Enter Team Name" maxlength="20">
+        <button onclick="generateLink()">Start Game</button>
+        <p id="error-message" style="color: red; margin-top: 10px;"></p>
+    </div>
+
+    <script>
+        // NOTE: You MUST update this URL after hosting on GitHub Pages!
+        const GAME_PAGE_URL = "https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPO_NAME/game.html";
+
+        function generateLink() {
+            const teamName = document.getElementById('team-name').value.trim().toUpperCase().replace(/\s/g, '_');
+            const errorMessage = document.getElementById('error-message');
+            
+            if (teamName.length < 3) {
+                errorMessage.textContent = "Please enter a name (3+ characters).";
+                return;
+            }
+
+            // Construct the permanent game link and the starting state (Q0)
+            const permanentLink = `${GAME_PAGE_URL}?team=${teamName}&step=Q0`;
+            
+            // Redirect the user to their unique, permanent starting point
+            window.location.href = permanentLink;
+        }
+    </script>
+</body>
+</html>
