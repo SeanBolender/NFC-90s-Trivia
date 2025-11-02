@@ -10,59 +10,59 @@
         h1 { color: #800080; }
         input { padding: 10px; margin: 15px 0; width: 90%; border: 1px solid #ccc; border-radius: 4px; }
         button { padding: 12px 20px; background-color: #FF69B4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        #loading-message { margin-top: 20px; color: #008080; font-weight: bold; display: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Welcome to the 90s Hunt!</h1>
-        <p>Enter your team name to generate your unique game link:</p>
+        <p id="instruction-text">Enter your team name to generate your unique game link:</p>
         <input type="text" id="team-name" placeholder="Enter Team Name" maxlength="20">
         <button onclick="generateLink()">Start Game</button>
         <p id="error-message" style="color: red; margin-top: 10px;"></p>
+        <p id="loading-message">Loading game state...</p>
     </div>
 
 <script>
-        // --- 1. COOKIE HELPER FUNCTION ---
-        function setCookie(name, value, days) {
-            let expires = "";
-            if (days) {
-                const date = new Date();
-                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                expires = "; expires=" + date.toUTCString();
-            }
-            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    // --- 1. COOKIE HELPER FUNCTION (Repeated here for clarity) ---
+    function setCookie(name, value, days) {
+        let expires = "";
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
         }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+    
+    // NOTE: Replace the placeholder with your actual live URL
+    const GAME_PAGE_URL = "https://seanbolender.github.io/NFC-90s-Trivia/game.html";
+
+    function generateLink() {
+        const teamName = document.getElementById('team-name').value.trim().toUpperCase().replace(/\s/g, '_');
+        const errorMessage = document.getElementById('error-message');
         
-        // --- 2. GAME LOGIC ---
-        // NOTE: You MUST update this URL after hosting on GitHub Pages!
-        const GAME_PAGE_URL = "https://seanbolender.github.io/NFC-90s-Trivia/game.html";
-
-        function generateLink() {
-            const teamName = document.getElementById('team-name').value.trim().toUpperCase().replace(/\s/g, '_');
-            const errorMessage = document.getElementById('error-message');
-            
-            if (teamName.length < 3) {
-                errorMessage.textContent = "Please enter a name (3+ characters).";
-                return;
-            }
-
-            // --- CRITICAL FIX: Write State to Cookies ---
-            // Set cookies to last for 7 days (or the length of the party)
-            setCookie('teamName', teamName, 7);
-            setCookie('currentStep', 'Q0', 7);
-            // ------------------------------------------
-
-            // Construct the permanent game link WITHOUT any parameters
-            const permanentLink = `${GAME_PAGE_URL}`;
-            
-            // Redirect the user to the base game page
-            window.location.href = permanentLink;
+        if (teamName.length < 3) {
+            errorMessage.textContent = "Please enter a name (3+ characters).";
+            return;
         }
-    </script>
-        }
-    </script>
+
+        // 1. Write State to Cookies
+        setCookie('teamName', teamName, 7);
+        setCookie('currentStep', 'Q0', 7);
+        
+        // 2. Hide input and show loading message
+        document.getElementById('instruction-text').style.display = 'none';
+        document.getElementById('team-name').style.display = 'none';
+        document.querySelector('button').style.display = 'none';
+        document.getElementById('loading-message').style.display = 'block';
+
+        // 3. CRITICAL FIX: Force a small delay (100ms) to ensure the cookie is processed by the browser
+        // This stops the fast redirect from prematurely loading the next page without the cookie.
+        setTimeout(() => {
+             window.location.href = GAME_PAGE_URL;
+        }, 100); 
+    }
+</script>
 </body>
 </html>
-
-
-
