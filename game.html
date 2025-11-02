@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>90s NFC Hunt - Game</title>
     <style>
-        /* (Use the same styling from start.html for consistency) */
+        /* (Styling omitted for brevity, assumes standard clean CSS is present) */
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f0f8ff; color: #1e3a8a; }
         .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); }
         h2 { color: #008080; margin-top: 5px; }
@@ -33,16 +33,14 @@
 
     <script>
         // =======================================================================================
-        // NOTE: UPDATE THESE TWO VARIABLES AFTER PHASE 3!
+        // A. CONSTANTS & GAME DATA
         // =======================================================================================
-        const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; // Paste your Google Apps Script URL here
+        // NOTE: REPLACE 'XXXXXX' WITH YOUR ACTUAL DEPLOYMENT URL
+        const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; 
         
-        // --- Game Data (Your Trivia) ---
         const gameData = {
             sequence: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10'],
-            Q0: { // Starting state: Not a question, just a message
-                clue: "Find the first NFC chip on the **NSYNC Cutout**."
-            },
+            Q0: { clue: "Find the first NFC chip on the **NSYNC Cutout**." },
             Q1: {
                 title: "Q1: 🎶 Pop Music",
                 question: "Which group, known for hits like 'Bye Bye Bye,' was founded in 1995 but had its name taken from a famous attraction at Disney World?",
@@ -64,225 +62,42 @@
                 clue: "Slam dunk! Your next clue is near the lovable nerd's **favorite cheese snack**.",
                 nextTag: "Q4"
             },
-            Q10: {
-                title: "Q10: 👻 Film Finale",
-                question: "The shocking final reveal and famous line ('I see dead people') belong to which psychological thriller film?",
-                correctAnswer: "THE SIXTH SENSE",
-                clue: "🎉 CONGRATULATIONS! The code is **90SBOOM**. Go to the **freezer** for your grand prize!",
-                nextTag: "WIN"
+            Q4: {
+                title: "Q4: 📺 TV Sitcom",
+                question: "What popular catchphrase, often followed by a backward shrug, was constantly repeated by the lovable nerd Steve Urkel on the show *Family Matters*?",
+                correctAnswer: "DID I DO THAT?",
+                clue: "That's right! Beam over to the captain's chair—the biggest ship is calling for **Riker**.",
+                nextTag: "Q5"
             },
-            WIN: {
-                title: "🎉 Hunt Complete!",
-                content: "You mastered the 90s Time Warp! Proceed to the freezer with the code **90SBOOM**."
-            }
-        };
-        // --- 1. COOKIE HELPER FUNCTION ---
-        function getCookie(name) {
-            const nameEQ = name + "=";
-            const ca = document.cookie.split(';');
-            for(let i = 0; i < ca.length; i++) {
-                let c = ca[i];
-                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
-                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-            }
-            return null;
-        }
-
-        // --- Global Variables (Read from URL / Session Storage) ---
-        // ... (rest of the script)
-        // --- Global Variables (Read from URL / Session Storage) ---
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        // --- Updated Code in game.html ---
-        let teamName = getCookie('teamName'); // Reads directly from cookie
-        let currentStep = getCookie('currentStep') || 'Q0'; // Reads directly from cookie, defaults to Q0
-        // ---------------------------------
-        
-        // --- Remaining Global Variables ---
-        const tagID = urlParams.get('q'); // The tag the player just scanned (Q1, Q2...)
-        const gameContent = document.getElementById('game-content');
-        const debugInfo = document.getElementById('debug-info');
-
-        // --- Core Functions ---
-        
-        // Saves the current state to session storage (this is the new critical step)
-        function saveState() {
-            if (teamName) {
-                sessionStorage.setItem('teamName', teamName);
-            }
-            if (currentStep) {
-                sessionStorage.setItem('currentStep', currentStep);
-            }
-        }
-        
-        // Logs the answer to Google Sheet via the script URL
-        async function logAnswer(questionID, answer, correct) {
-            const data = {
-                Team: teamName,
-                Question: questionID,
-                Answer: answer,
-                Correct: correct ? 'YES' : 'NO'
-            };
-
-            await fetch(POST_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-        }
-        
-        // Submits the answer
-        async function submitAnswer(questionID, correctAnswer) {
-            const answerInput = document.getElementById('answer-input');
-            const rawAnswer = answerInput ? answerInput.value.trim() : '';
-            const submittedAnswer = rawAnswer.toUpperCase();
-            const isCorrect = submittedAnswer === correctAnswer.toUpperCase();
-
-            await logAnswer(questionID, submittedAnswer, isCorrect);
-
-            if (isCorrect) {
-                currentStep = gameData[questionID].nextTag; // Update the global step variable
-                const nextClue = gameData[questionID].clue;
-                
-                if (currentStep === 'WIN') {
-                    showFinalMessage(gameData.WIN);
-                } else {
-                    // Save new step to storage and show feedback
-                    saveState(); 
-                    showFeedback(true, nextClue);
-                }
-            } else {
-                showFeedback(false, `❌ Incorrect! Try again, ${teamName}.`);
-            }
-        }
-        
-        // Game Initialization
-            function initializeGame() {
-            // Display debug info
-            // ... (display debug code remains the same)
-
-            // 1. Check if the team name is set (if not, send back to start.html)
-            if (!teamName || teamName.length < 3) {
-                window.location.href = 'start.html'; 
-                return;
-            }
-
-            // --- 2. CHECK FOR STARTING STATE (Q0) ---
-            // If the current step is Q0 and no chip was scanned, show the Q0 clue.
-            if (currentStep === 'Q0') {
-                // Show Q0 clue (start message)
-                // Accessing the clue directly from the hardcoded Q0 object
-                showFeedback(true, gameData.Q0.clue); 
-                return;
-            }
-
-            // --- 3. CHECK FOR CORRECT SCAN (TAG ID) ---
-            if (tagID) {
-                 processTag(); // Only process tag logic if a chip parameter is present
-                 return;
-            }
-
-            // --- 4. DEFAULT: REMIND PLAYER OF LAST CLUE ---
-            // If team name exists, but no tag was scanned, remind them of the next chip to scan.
-            const lastAnsweredData = gameData[currentStep];
-            showFeedback(true, lastAnsweredData.clue); 
-        }
-
-        // Execute the game start
-        initializeGame();
-            
-            // If team name was in the URL for the first time, save the initial state
-            if (urlParams.get('team')) {
-                 saveState();
-            }
-
-            // --- DEBUG INFO UPDATE ---
-            debugInfo.innerHTML = `
-                <strong>GAME STATE (FOR DEBUG):</strong><br>
-                Team Name: <strong>${teamName}</strong><br>
-                Current Step (Last Answered): <strong>${currentStep}</strong><br>
-                Tag Scanned: <strong>${tagID || 'N/A'}</strong>
-            `;
-
-            // A. Check if the player is at the START (Q0)
-            if (currentStep === 'Q0' && !tagID) {
-                showFeedback(true, gameData.Q0.clue);
-                return;
-            }
-
-            // B. Check if the player is at the right sequential step
-            const expectedNextTagIndex = gameData.sequence.indexOf(currentStep) + 1;
-            const expectedNextTag = gameData.sequence[expectedNextTagIndex];
-
-            // Lockout check
-            if (tagID && tagID !== expectedNextTag) {
-                showLockout(expectedNextTag);
-                return;
-            }
-            
-            // C. Correct Scan (tagID should equal expectedNextTag)
-            if (tagID && tagID === expectedNextTag) {
-                // Correct scan: Show question. Note: currentStep is NOT updated yet.
-                showQuestion(gameData[tagID], tagID);
-                return;
-            }
-            
-            // D. Player is on their permanent link but hasn't scanned the next chip yet
-            if (!tagID) {
-                 // Remind them of the last clue/next step
-                 const lastAnsweredStep = currentStep === 'Q0' ? gameData.Q0 : gameData[currentStep];
-                 showFeedback(true, lastAnsweredStep.clue); 
-            }
-        }
-
-        // --- UI Functions (Simplified for clarity) ---
-        
-        function showQuestion(data, id) {
-             gameContent.innerHTML = `
-                <div class="question-box">
-                    <h2>${data.title}</h2>
-                    <p><strong>Team ${teamName}, what is your answer?</strong></p>
-                    <p>${data.question}</p>
-                    <input type="text" id="answer-input" placeholder="Type your answer here" />
-                    <button onclick="submitAnswer('${id}', '${data.correctAnswer}')">Submit Answer</button>
-                </div>
-            `;
-        }
-
-        function showFeedback(isCorrect, message) {
-            let feedbackHTML = isCorrect ? 
-                `<h2 class="success">✅ SUCCESS!</h2><p>${message}</p>` :
-                `<h2 class="error">❌ Incorrect!</h2><p>${message}</p>`;
-
-            gameContent.innerHTML = `<div class="question-box">${feedbackHTML}</div>`;
-        }
-        
-        function showLockout(expectedTag) {
-            const expectedClue = gameData[currentStep].clue; 
-            gameContent.innerHTML = `<div class="question-box error">
-                <h2>🚫 HOLD IT, ${teamName}!</h2>
-                <p>You must scan the chip for **${expectedTag}**.</p>
-                <p>Your current task location is: <strong>${expectedClue}</strong></p>
-            </div>`;
-        }
-        
-        function showFinalMessage(data) {
-             gameContent.innerHTML = `
-                <div class="question-box">
-                    <h2 class="success">${data.title}</h2>
-                    <p>${data.content}</p>
-                    <button onclick="if(confirm('Are you sure you want to restart the hunt?')) { sessionStorage.clear(); window.location.href='start.html'; }">Restart Game</button>
-                </div>
-            `;
-        }
-        
-        // Execute the game start
-        initializeGame();
-    </script>
-</body>
-</html>
-
-
-
-
+            Q5: {
+                title: "Q5: 🖖 Sci-Fi Trek",
+                question: "STAR TREK: TNG: What is the full name of Captain Picard's first officer, who served for all seven seasons of *The Next Generation*?",
+                correctAnswer: "WILLIAM T. RIKER",
+                clue: "Engage! Look for the place where toys first came to life—the **cowboy doll's foot**.",
+                nextTag: "Q6"
+            },
+            Q6: {
+                title: "Q6: 🎬 Animated Film",
+                question: "What was the name of the first-ever feature-length film created entirely using computer-generated imagery (CGI)?",
+                correctAnswer: "TOY STORY",
+                clue: "To infinity and beyond! Now, find the spot where a famous Spanish dance became a worldwide hit on a **boombox**.",
+                nextTag: "Q7"
+            },
+            Q7: {
+                title: "Q7: 💃 Dance Craze",
+                question: "What Spanish one-hit wonder was remixed by the Bayside Boys and became a global dance craze in 1996, spending 14 weeks at #1?",
+                correctAnswer: "MACARENA",
+                clue: "Heeeeeyyy Macarena! Find the book by **R.L. Stine** that details a buzzing fear.",
+                nextTag: "Q8"
+            },
+            Q8: {
+                title: "Q8: 📚 Children's Horror",
+                question: "The book *Why I’m Afraid of Bees* belongs to the famous children’s horror series written by what author?",
+                correctAnswer: "R.L. STINE",
+                clue: "Be warned! The final question is waiting on the **back of the DVD player**.",
+                nextTag: "Q9"
+            },
+            Q9: {
+                title: "Q9: 📀 Home Video Tech",
+                question: "In 1998, a new format war began when the superior **DVD** format won out over its competitor, which was backed by Toshiba. What was the name of the losing format?",
+                correctAnswer: "
