@@ -21,7 +21,7 @@
         <p id="error-message" style="color: red; margin-top: 10px;"></p>
     </div>
 
-    <script>
+  <script>
         // NOTE: You MUST update this URL after hosting on GitHub Pages!
         const GAME_PAGE_URL = "https://seanbolender.github.io/NFC-90s-Trivia/game.html";
 
@@ -34,13 +34,22 @@
                 return;
             }
 
-            // Construct the permanent game link and the starting state (Q0)
-            const permanentLink = `${GAME_PAGE_URL}?team=${teamName}&step=Q0`;
+            // --- CRITICAL FIX: Write State to Session Storage First ---
+            sessionStorage.setItem('teamName', teamName);
+            sessionStorage.setItem('currentStep', 'Q0');
+            // --------------------------------------------------------
+
+            // Construct the permanent game link without the team/step parameters
+            // The team name and step are now carried by Session Storage
+            const permanentLink = `${GAME_PAGE_URL}`;
             
-            // Redirect the user to their unique, permanent starting point
+            // Redirect the user to the base game page
             window.location.href = permanentLink;
+        }
+    </script>
         }
     </script>
 </body>
 </html>
+
 
