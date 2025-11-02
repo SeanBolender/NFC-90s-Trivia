@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>90s NFC Hunt - Game</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f0f8ff; color: #1e3a8a; }
+        /* CSS styles omitted for brevity, ensure they are present */
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f0f8ff; color: #1e3a6a; }
         .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); }
         h2 { color: #008080; margin-top: 5px; }
         .question-box { margin: 25px 0; padding: 25px; border: 3px dashed #FFD700; border-radius: 8px; background-color: #fff9c4; }
@@ -34,8 +35,7 @@
         // =======================================================================================
         // A. CONSTANTS & GAME DATA
         // =======================================================================================
-        // NOTE: REPLACE 'XXXXXX' WITH YOUR ACTUAL DEPLOYMENT URL
-        const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; 
+        const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; // REPLACE with your actual Deployment URL
         
         const gameData = {
             sequence: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10'],
@@ -117,7 +117,7 @@
         };
 
         // =======================================================================================
-        // B. COOKIE / STORAGE FUNCTIONS (The new engine for reliability)
+        // B. COOKIE / STORAGE FUNCTIONS
         // =======================================================================================
         function getCookie(name) {
             const nameEQ = name + "=";
@@ -150,9 +150,9 @@
         const urlParams = new URLSearchParams(window.location.search);
         
         let teamName = getCookie('teamName'); 
-        let currentStep = getCookie('currentStep') || 'Q0'; // Q0 is the default start state
+        let currentStep = getCookie('currentStep') || 'Q0'; 
         
-        const tagID = urlParams.get('q'); // The tag the player just scanned (from the NFC URL)
+        const tagID = urlParams.get('q');
         const gameContent = document.getElementById('game-content');
         const debugInfo = document.getElementById('debug-info');
 
@@ -196,97 +196,4 @@
                 const nextTag = gameData[questionID].nextTag;
                 const nextClue = gameData[questionID].clue;
                 
-                // Update the state in the cookie and local variable
-                setCookie('currentStep', nextTag, 7); 
-                currentStep = nextTag; 
-
-                if (nextTag === 'WIN') {
-                    showFinalMessage(gameData.WIN);
-                } else {
-                    showFeedback(true, nextClue);
-                }
-            } else {
-                showFeedback(false, `❌ Incorrect! Try again, ${teamName}.`);
-            }
-        }
-
-        // --- UI Display Functions ---
-        function showQuestion(data, id) {
-            gameContent.innerHTML = `
-                <div class="question-box">
-                    <h2>${data.title}</h2>
-                    <p><strong>Team ${teamName}, what is your answer?</strong></p>
-                    <p>${data.question}</p>
-                    <input type="text" id="answer-input" placeholder="Type your answer here" />
-                    <button onclick="submitAnswer('${id}', '${data.correctAnswer}')">Submit Answer</button>
-                </div>
-            `;
-        }
-
-        function showFeedback(isCorrect, message) {
-            let feedbackHTML = isCorrect ? 
-                `<h2 class="success">✅ SUCCESS!</h2><p>${message}</p>` :
-                `<h2 class="error">❌ Incorrect!</h2><p>${message}</p>`;
-
-            gameContent.innerHTML = `<div class="question-box">${feedbackHTML}</div>`;
-        }
-
-        function showLockout(expectedID) {
-            const expectedClue = gameData[currentStep].clue;
-            const nextTag = gameData.sequence[gameData.sequence.indexOf(currentStep) + 1] || 'Q1';
-
-            gameContent.innerHTML = `<div class="question-box error">
-                <h2>🚫 HOLD IT, ${teamName}!</h2>
-                <p>You must complete **${currentStep}** before scanning **${nextTag}**.</p>
-                <p>Your current task location is: <strong>${expectedClue}</strong></p>
-            </div>`;
-        }
-
-        function showFinalMessage(data) {
-            gameContent.innerHTML = `
-                <div class="question-box">
-                    <h2 class="success">${data.title}</h2>
-                    <p>${data.content}</p>
-                    <button onclick="if(confirm('Are you sure you want to restart the hunt?')) { eraseCookie('teamName'); eraseCookie('currentStep'); window.location.href='start.html'; }">Restart Game</button>
-                </div>
-            `;
-        }
-    
-        // =======================================================================================
-        // E. GAME INITIALIZER (Runs on page load)
-        // =======================================================================================
-        function initializeGame() {
-            // 1. Check if the team name is set (if not, send back to start.html)
-            if (!teamName || teamName.length < 3) {
-                window.location.href = 'start.html'; 
-                return;
-            }
-
-            // Display debug info at the bottom of the page
-            debugInfo.innerHTML = `
-                <strong>GAME STATE (FOR DEBUG):</strong><br>
-                Team Name: <strong>${teamName}</strong><br>
-                Current Step (Last Answered): <strong>${currentStep}</strong><br>
-                Tag Scanned: <strong>${tagID || 'N/A'}</strong>
-            `;
-            
-            // 2. CHECK FOR STARTING STATE (Q0) OR REMINDER STATE
-            if (!tagID) {
-                // If no tag was scanned, remind the player of the current task.
-                const lastAnsweredData = gameData[currentStep];
-                showFeedback(true, lastAnsweredData.clue);
-                return;
-            }
-
-            // 3. CHECK FOR CORRECT SCAN
-            if (tagID) {
-                processTag();
-                return;
-            }
-        }
-
-        // --- Final Execution ---
-        initializeGame();
-    </script>
-</body>
-</html>
+                // Update the state in the cookie and
