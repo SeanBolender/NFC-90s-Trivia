@@ -80,9 +80,10 @@
         // --- Global Variables (Read from URL / Session Storage) ---
         const urlParams = new URLSearchParams(window.location.search);
         
-        // Use Session Storage as the authoritative source, falling back to URL for the initial load
-        let teamName = sessionStorage.getItem('teamName') || urlParams.get('team'); 
-        let currentStep = sessionStorage.getItem('currentStep') || urlParams.get('step'); 
+        // --- Updated Code in game.html ---
+        let teamName = sessionStorage.getItem('teamName'); 
+        let currentStep = sessionStorage.getItem('currentStep');
+        // ---------------------------------
         
         // --- Remaining Global Variables ---
         const tagID = urlParams.get('q'); // The tag the player just scanned (Q1, Q2...)
@@ -242,3 +243,4 @@
     </script>
 </body>
 </html>
+
