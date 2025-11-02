@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Merging...</title>
+    <script>
+        // Get the parameters from the *CURRENT* full URL (which contains team and step)
+        const fullParams = new URLSearchParams(window.location.search);
+        const currentTeam = fullParams.get('team');
+        const currentStep = fullParams.get('step');
+        
+        // Get the parameter from the NFC chip (which will contain the 'q' question ID)
+        const newQ = fullParams.get('q'); 
+
+        // Check if all necessary variables are present
+        if (currentTeam && currentStep && newQ) {
+            // Success: Construct the final, merged URL and redirect the player back to game.html
+            const GAME_URL = 'game.html'; // Assumes go.html and game.html are in the same directory
+            const mergedURL = `${GAME_URL}?team=${currentTeam}&step=${currentStep}&q=${newQ}`;
+            
+            // Redirect the browser to the new, full URL
+            window.location.replace(mergedURL);
+        } else {
+            // Fail: If any parameter is missing, send them back to start.
+            window.location.href = 'start.html';
+        }
+    </script>
+</head>
+<body>
+    <p>Loading next challenge...</p>
+</body>
+</html>
