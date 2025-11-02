@@ -158,13 +158,38 @@
         }
         
         // Game Initialization
-        function initializeGame() {
-            // Check if the page was opened without a required team name
+            function initializeGame() {
+            // Display debug info
+            // ... (display debug code remains the same)
+
+            // 1. Check if the team name is set (if not, send back to start.html)
             if (!teamName || teamName.length < 3) {
-                // If Team Name is missing from the URL AND Storage, send them back to start.
                 window.location.href = 'start.html'; 
                 return;
             }
+
+            // --- 2. CHECK FOR STARTING STATE (Q0) ---
+            // If the current step is Q0 and no chip was scanned, show the Q0 clue.
+            if (currentStep === 'Q0' && !tagID) {
+                // Show Q0 clue (start message)
+                showFeedback(true, gameData.Q0.clue);
+                return;
+            }
+
+            // --- 3. CHECK FOR CORRECT SCAN (TAG ID) ---
+            if (tagID) {
+                 processTag(); // Only process tag logic if a chip parameter is present
+                 return;
+            }
+
+            // --- 4. DEFAULT: REMIND PLAYER OF LAST CLUE ---
+            // If team name exists, but no tag was scanned, remind them of the next chip to scan.
+            const lastAnsweredData = gameData[currentStep];
+            showFeedback(true, lastAnsweredData.clue); 
+        }
+
+        // Execute the game start
+        initializeGame();
             
             // If team name was in the URL for the first time, save the initial state
             if (urlParams.get('team')) {
@@ -256,5 +281,6 @@
     </script>
 </body>
 </html>
+
 
 
