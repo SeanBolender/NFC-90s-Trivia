@@ -14,6 +14,14 @@
         button { padding: 12px 25px; margin-top: 15px; background-color: #FF69B4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
         .error { color: #b91c1c; font-weight: bold; }
         .success { color: #10b981; font-weight: bold; }
+        #debug-info { 
+            margin-top: 30px; 
+            font-size: 12px; 
+            color: #777; 
+            border-top: 1px dashed #ccc; 
+            padding-top: 10px; 
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -21,12 +29,13 @@
         <h1 id="game-title">90s Time Warp Hunt</h1>
         <div id="game-content">Loading game...</div>
     </div>
+    <div id="debug-info"></div>
 
     <script>
         // =======================================================================================
         // NOTE: UPDATE THESE TWO VARIABLES AFTER PHASE 3!
         // =======================================================================================
-        const POST_URL = "https://script.google.com/macros/s/AKfycbyut9bMCYxvqx0X3orKeCXVEZQ7QS1cK2FpcJkOOmbW-pueKn6B7xNCRL6WgNYgSqOE/exec"; // Paste your Google Apps Script URL here
+        const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; // Paste your Google Apps Script URL here
         
         // --- Game Data (Your Trivia) ---
         const gameData = {
@@ -55,7 +64,6 @@
                 clue: "Slam dunk! Your next clue is near the lovable nerd's **favorite cheese snack**.",
                 nextTag: "Q4"
             },
-            // ... [ADD Q4 through Q9 HERE, including correct answers and clues] ...
             Q10: {
                 title: "Q10: 👻 Film Finale",
                 question: "The shocking final reveal and famous line ('I see dead people') belong to which psychological thriller film?",
@@ -69,17 +77,31 @@
             }
         };
 
-        // --- Global Variables (Read from URL) ---
+        // --- Global Variables (Read from URL / Session Storage) ---
         const urlParams = new URLSearchParams(window.location.search);
-        const teamName = urlParams.get('team'); // The team name (permanent ID)
-        const currentStep = urlParams.get('step'); // The last answered question (Q0, Q1, Q2...)
-        const tagID = urlParams.get('q'); // The tag the player just scanned (Q1, Q2...)
         
+        // Use Session Storage as the authoritative source, falling back to URL for the initial load
+        let teamName = sessionStorage.getItem('teamName') || urlParams.get('team'); 
+        let currentStep = sessionStorage.getItem('currentStep') || urlParams.get('step'); 
+        
+        // --- Remaining Global Variables ---
+        const tagID = urlParams.get('q'); // The tag the player just scanned (Q1, Q2...)
         const gameContent = document.getElementById('game-content');
+        const debugInfo = document.getElementById('debug-info');
 
         // --- Core Functions ---
         
-        // 1. Logs the answer to Google Sheet via the script URL
+        // Saves the current state to session storage (this is the new critical step)
+        function saveState() {
+            if (teamName) {
+                sessionStorage.setItem('teamName', teamName);
+            }
+            if (currentStep) {
+                sessionStorage.setItem('currentStep', currentStep);
+            }
+        }
+        
+        // Logs the answer to Google Sheet via the script URL
         async function logAnswer(questionID, answer, correct) {
             const data = {
                 Team: teamName,
@@ -88,49 +110,60 @@
                 Correct: correct ? 'YES' : 'NO'
             };
 
-            // Sends data to the Google Apps Script POST_URL
             await fetch(POST_URL, {
                 method: 'POST',
-                mode: 'no-cors', // Required for Google Scripts
+                mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
         }
         
-        // 2. Submits the answer
+        // Submits the answer
         async function submitAnswer(questionID, correctAnswer) {
             const answerInput = document.getElementById('answer-input');
             const rawAnswer = answerInput ? answerInput.value.trim() : '';
             const submittedAnswer = rawAnswer.toUpperCase();
             const isCorrect = submittedAnswer === correctAnswer.toUpperCase();
 
-            // Log the result before proceeding
             await logAnswer(questionID, submittedAnswer, isCorrect);
 
             if (isCorrect) {
-                const nextTag = gameData[questionID].nextTag;
+                currentStep = gameData[questionID].nextTag; // Update the global step variable
                 const nextClue = gameData[questionID].clue;
                 
-                // Redirects the player to their *new* permanent link with the updated step
-                if (nextTag === 'WIN') {
+                if (currentStep === 'WIN') {
                     showFinalMessage(gameData.WIN);
                 } else {
-                    const nextLink = `?team=${teamName}&step=${nextTag}`;
-                    showFeedback(true, nextClue, nextLink);
+                    // Save new step to storage and show feedback
+                    saveState(); 
+                    showFeedback(true, nextClue);
                 }
             } else {
                 showFeedback(false, `❌ Incorrect! Try again, ${teamName}.`);
             }
         }
         
-        // 3. Game Initialization
+        // Game Initialization
         function initializeGame() {
             // Check if the page was opened without a required team name
             if (!teamName || teamName.length < 3) {
-                // Redirect to the start page to get a team name
+                // If Team Name is missing from the URL AND Storage, send them back to start.
                 window.location.href = 'start.html'; 
                 return;
             }
+            
+            // If team name was in the URL for the first time, save the initial state
+            if (urlParams.get('team')) {
+                 saveState();
+            }
+
+            // --- DEBUG INFO UPDATE ---
+            debugInfo.innerHTML = `
+                <strong>GAME STATE (FOR DEBUG):</strong><br>
+                Team Name: <strong>${teamName}</strong><br>
+                Current Step (Last Answered): <strong>${currentStep}</strong><br>
+                Tag Scanned: <strong>${tagID || 'N/A'}</strong>
+            `;
 
             // A. Check if the player is at the START (Q0)
             if (currentStep === 'Q0' && !tagID) {
@@ -150,22 +183,20 @@
             
             // C. Correct Scan (tagID should equal expectedNextTag)
             if (tagID && tagID === expectedNextTag) {
-                // Clear the URL tag so the user doesn't answer again on a refresh
-                const baseLink = `?team=${teamName}&step=${currentStep}`;
-                history.replaceState(null, null, baseLink);
-
+                // Correct scan: Show question. Note: currentStep is NOT updated yet.
                 showQuestion(gameData[tagID], tagID);
                 return;
             }
             
             // D. Player is on their permanent link but hasn't scanned the next chip yet
             if (!tagID) {
-                 const nextClueData = gameData[currentStep]; // The step they just completed
-                 showFeedback(true, nextClueData.clue); // Remind them of the last clue/next step
+                 // Remind them of the last clue/next step
+                 const lastAnsweredStep = currentStep === 'Q0' ? gameData.Q0 : gameData[currentStep];
+                 showFeedback(true, lastAnsweredStep.clue); 
             }
         }
 
-        // --- UI Functions ---
+        // --- UI Functions (Simplified for clarity) ---
         
         function showQuestion(data, id) {
              gameContent.innerHTML = `
@@ -179,26 +210,20 @@
             `;
         }
 
-        function showFeedback(isCorrect, message, nextLink) {
+        function showFeedback(isCorrect, message) {
             let feedbackHTML = isCorrect ? 
                 `<h2 class="success">✅ SUCCESS!</h2><p>${message}</p>` :
                 `<h2 class="error">❌ Incorrect!</h2><p>${message}</p>`;
 
-            if (nextLink) {
-                // If there's a next link, update the browser URL before showing the clue
-                history.replaceState(null, null, nextLink);
-                feedbackHTML += `<p>Find the NFC chip at the location above!</p>`;
-            }
-            
             gameContent.innerHTML = `<div class="question-box">${feedbackHTML}</div>`;
         }
         
         function showLockout(expectedTag) {
-            const expectedClue = gameData[gameData.sequence[gameData.sequence.indexOf(currentStep) + 1]].clue;
+            const expectedClue = gameData[currentStep].clue; 
             gameContent.innerHTML = `<div class="question-box error">
                 <h2>🚫 HOLD IT, ${teamName}!</h2>
-                <p>You must complete **${currentStep}** before scanning **${expectedTag}**.</p>
-                <p>Your current task is: <strong>${expectedClue}</strong></p>
+                <p>You must scan the chip for **${expectedTag}**.</p>
+                <p>Your current task location is: <strong>${expectedClue}</strong></p>
             </div>`;
         }
         
@@ -207,11 +232,11 @@
                 <div class="question-box">
                     <h2 class="success">${data.title}</h2>
                     <p>${data.content}</p>
-                    <button onclick="window.location.href='start.html'">Restart Game</button>
+                    <button onclick="if(confirm('Are you sure you want to restart the hunt?')) { sessionStorage.clear(); window.location.href='start.html'; }">Restart Game</button>
                 </div>
             `;
         }
-
+        
         // Execute the game start
         initializeGame();
     </script>
