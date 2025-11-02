@@ -170,9 +170,10 @@
 
             // --- 2. CHECK FOR STARTING STATE (Q0) ---
             // If the current step is Q0 and no chip was scanned, show the Q0 clue.
-            if (currentStep === 'Q0' && !tagID) {
+            if (currentStep === 'Q0') {
                 // Show Q0 clue (start message)
-                showFeedback(true, gameData.Q0.clue);
+                // Accessing the clue directly from the hardcoded Q0 object
+                showFeedback(true, gameData.Q0.clue); 
                 return;
             }
 
@@ -281,6 +282,7 @@
     </script>
 </body>
 </html>
+
 
 
 
