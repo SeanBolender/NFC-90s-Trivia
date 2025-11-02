@@ -76,13 +76,26 @@
                 content: "You mastered the 90s Time Warp! Proceed to the freezer with the code **90SBOOM**."
             }
         };
+        // --- 1. COOKIE HELPER FUNCTION ---
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
 
+        // --- Global Variables (Read from URL / Session Storage) ---
+        // ... (rest of the script)
         // --- Global Variables (Read from URL / Session Storage) ---
         const urlParams = new URLSearchParams(window.location.search);
         
         // --- Updated Code in game.html ---
-        let teamName = sessionStorage.getItem('teamName'); 
-        let currentStep = sessionStorage.getItem('currentStep');
+        let teamName = getCookie('teamName'); // Reads directly from cookie
+        let currentStep = getCookie('currentStep') || 'Q0'; // Reads directly from cookie, defaults to Q0
         // ---------------------------------
         
         // --- Remaining Global Variables ---
@@ -243,4 +256,5 @@
     </script>
 </body>
 </html>
+
 
