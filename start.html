@@ -1,68 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Start Hunt - Name Entry</title>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f0f8ff; }
-        .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        h1 { color: #800080; }
-        input { padding: 10px; margin: 15px 0; width: 90%; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 12px 20px; background-color: #FF69B4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        #loading-message { margin-top: 20px; color: #008080; font-weight: bold; display: none; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Start Hunt - Name Entry</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f0f8ff; }
+    .container { max-width: 420px; margin: 0 auto; background: white; padding: 28px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
+    h1 { color: #800080; margin-bottom: 6px; }
+    label { display:block; text-align:left; margin:8px 0 4px; font-weight:600; color:#333; }
+    input[type="text"] { padding: 10px; margin: 6px 0 10px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing:border-box; }
+    button { padding: 12px 20px; background-color: #FF69B4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    button:focus { outline: 3px solid rgba(255,105,180,0.25); }
+    #loading-message { margin-top: 18px; color: #008080; font-weight: bold; display: none; }
+    .sr-only { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+    #error-message { color: red; margin-top: 10px; min-height: 1.2em; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to the 90s Hunt!</h1>
-        <p id="instruction-text">Enter your team name to generate your unique game link:</p>
-        <input type="text" id="team-name" placeholder="Enter Team Name" maxlength="20">
-        <button onclick="generateLink()">Start Game</button>
-        <p id="error-message" style="color: red; margin-top: 10px;"></p>
-        <p id="loading-message">Loading game state...</p>
-    </div>
+  <div class="container" role="main">
+    <h1>Welcome to the 90s Hunt!</h1>
+    <p id="instruction-text">Enter your team name to generate your unique game link:</p>
+
+    <form id="start-form" novalidate>
+      <label for="team-name">Team name</label>
+      <input
+        id="team-name"
+        name="team-name"
+        type="text"
+        placeholder="Enter Team Name (3–20 chars)"
+        maxlength="20"
+        aria-describedby="error-message"
+        autocomplete="off"
+      />
+      <button id="start-button" type="submit">Start Game</button>
+    </form>
+
+    <p id="error-message" role="alert" aria-live="assertive"></p>
+    <p id="loading-message" aria-hidden="true">Loading game state...</p>
+  </div>
 
 <script>
-    // --- 1. COOKIE HELPER FUNCTION (Repeated here for clarity) ---
-    function setCookie(name, value, days) {
-        let expires = "";
-        if (days) {
-            const date = new Date();
-            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-            expires = "; expires=" + date.toUTCString();
-        }
-        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+/*
+ Improved start.html:
+ - Uses a <form> so Enter works
+ - Sanitizes & normalizes team name
+ - Uses localStorage (synchronous, less prone to cookie blocking/domain issues)
+ - Keeps a cookie fallback (encoded) for environments that need cookies
+ - Accessible error reporting
+ - Immediate navigation via location.replace (localStorage is synchronous)
+*/
+
+const GAME_PAGE_URL = "https://seanbolender.github.io/NFC-90s-Trivia/game.html"; // update if needed
+const COOKIE_DAYS = 7;
+
+// helper - set cookie with encoding and attributes (only used as fallback)
+function setCookie(name, value, days) {
+  if (!name) return;
+  const encodedName = encodeURIComponent(name);
+  const encodedValue = encodeURIComponent(value || "");
+  let expires = "";
+  if (typeof days === "number" && days > 0) {
+    const date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    expires = "; expires=" + date.toUTCString();
+  }
+  // SameSite=Lax and Secure (Secure only has effect on HTTPS; GitHub Pages is HTTPS)
+  document.cookie = `${encodedName}=${encodedValue}${expires}; path=/; SameSite=Lax; Secure`;
+}
+
+// Optional: read cookie (for debugging / fallback)
+function getCookie(name) {
+  if (!name) return null;
+  const encodedName = encodeURIComponent(name) + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i].trim();
+    if (c.indexOf(encodedName) === 0) {
+      return decodeURIComponent(c.substring(encodedName.length));
     }
-    
-    // NOTE: Replace the placeholder with your actual live URL
-    const GAME_PAGE_URL = "https://seanbolender.github.io/NFC-90s-Trivia/game.html";
+  }
+  return null;
+}
 
-    function generateLink() {
-        const teamName = document.getElementById('team-name').value.trim().toUpperCase().replace(/\s/g, '_');
-        const errorMessage = document.getElementById('error-message');
-        
-        if (teamName.length < 3) {
-            errorMessage.textContent = "Please enter a name (3+ characters).";
-            return;
-        }
+// sanitize & normalize team name
+function sanitizeTeamName(raw) {
+  if (!raw) return "";
+  // Trim, convert to upper, collapse whitespace to single underscore,
+  // allow A-Z, 0-9, dash and underscore only
+  let t = raw.trim().toUpperCase();
+  t = t.replace(/\s+/g, '_');            // spaces -> underscore
+  t = t.replace(/[^A-Z0-9_-]/g, '');     // remove other chars
+  // optionally truncate to 20 to mirror input maxlength
+  if (t.length > 20) t = t.slice(0, 20);
+  return t;
+}
 
-        // 1. Write State to Cookies
-        setCookie('teamName', teamName, 7);
-        setCookie('currentStep', 'Q0', 7);
-        
-        // 2. Hide input and show loading message
-        document.getElementById('instruction-text').style.display = 'none';
-        document.getElementById('team-name').style.display = 'none';
-        document.querySelector('button').style.display = 'none';
-        document.getElementById('loading-message').style.display = 'block';
+function showError(message) {
+  const el = document.getElementById('error-message');
+  el.textContent = message || "";
+}
 
-        // 3. CRITICAL FIX: Force a small delay (100ms) to ensure the cookie is processed by the browser
-        // This stops the fast redirect from prematurely loading the next page without the cookie.
-        setTimeout(() => {
-             window.location.href = GAME_PAGE_URL;
-        }, 100); 
-    }
+function showLoading() {
+  document.getElementById('instruction-text').style.display = 'none';
+  document.getElementById('team-name').style.display = 'none';
+  document.getElementById('start-button').style.display = 'none';
+  document.getElementById('loading-message').style.display = 'block';
+  document.getElementById('loading-message').setAttribute('aria-hidden','false');
+}
+
+// main
+document.getElementById('start-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  showError("");
+
+  const raw = document.getElementById('team-name').value;
+  const teamName = sanitizeTeamName(raw);
+
+  if (!teamName || teamName.length < 3) {
+    showError("Please enter a name (3+ alphanumeric characters).");
+    return;
+  }
+
+  try {
+    // preferred: localStorage for client-only state (synchronous)
+    localStorage.setItem('teamName', teamName);
+    localStorage.setItem('currentStep', 'Q0');
+
+    // fallback: set cookie (encoded)
+    setCookie('teamName', teamName, COOKIE_DAYS);
+    setCookie('currentStep', 'Q0', COOKIE_DAYS);
+  } catch (err) {
+    // localStorage might be blocked (privacy mode) — still try cookies, show user-friendly notice
+    setCookie('teamName', teamName, COOKIE_DAYS);
+    setCookie('currentStep', 'Q0', COOKIE_DAYS);
+  }
+
+  showLoading();
+
+  // immediate navigation — localStorage is synchronous and available immediately to next page
+  // use replace so Back button doesn't keep start state
+  location.replace(GAME_PAGE_URL);
+});
 </script>
 </body>
 </html>
