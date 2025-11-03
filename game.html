@@ -46,7 +46,7 @@ const gameData = {
     question: "Which group, known for hits like 'Bye Bye Bye,' was founded in 1995 but had its name taken from a famous attraction at Disney World?",
     correctAnswer: "NSYNC",
     choices: ["BACKSTREET BOYS", "NSYNC", "98 DEGREES", "BOYS II MEN"],
-    clue: "Answer recorded! Your next challenge is found by the Game Boy.",
+    clue: "Correct! Your next challenge is found by the Game Boy.",
     nextTag: "Q2"
   },
   Q2: {
@@ -375,8 +375,15 @@ function handleTag(tag) {
     return;
   }
 
-  const currentIndex = gameData.sequence.indexOf(currentStep);
-  const expectedNext = gameData.sequence[currentIndex + 1] || gameData.sequence[0];
+  // *** FIXED: compute expectedNext using currentStep semantics ***
+  let expectedNext;
+  if (currentStep === 'Q0') {
+    expectedNext = gameData.sequence[0]; // Q1
+  } else if (currentStep === 'WIN') {
+    expectedNext = 'WIN';
+  } else {
+    expectedNext = currentStep; // currentStep already stores the tag the team should scan next
+  }
 
   if (normalizedTag === expectedNext) {
     renderQuestion(normalizedTag);
@@ -408,4 +415,3 @@ function handleTag(tag) {
 </script>
 </body>
 </html>
-
