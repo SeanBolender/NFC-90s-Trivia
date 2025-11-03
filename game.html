@@ -214,28 +214,84 @@ function saveState(step) {
   debug(`State saved: currentStep=${step}`);
 }
 
-async function logChoice(questionID, selectedChoice) {
-  const data = {
+async function logChoice(questionID, selectedChoice, attempt = 0) {
+  // Build the payload to match your Apps Script headers
+  const payload = {
     Team: teamName,
     Question: questionID,
     Choice: selectedChoice,
-    Timestamp: new Date().toISOString()
+    // optional client-side timestamp (server also records its own)
+    ClientTimestamp: new Date().toISOString(),
+    // helpful debugging fields
+    ClientUA: (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '',
+    ClientOrigin: (typeof location !== 'undefined' && location.origin) ? location.origin : ''
   };
+
   try {
     const resp = await fetch(POST_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(payload)
     });
-    // attempt to read JSON; many endpoints return JSON
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '<no body>');
+      throw new Error(`Server returned ${resp.status}: ${txt}`);
+    }
+
+    // parse response if JSON
     try {
       const j = await resp.json();
       debug(`Logged ${questionID} response: ${JSON.stringify(j)}`);
     } catch (err) {
       debug(`Logged ${questionID}: server returned non-JSON or no body`);
     }
+  } catch (err) {
+    debug(`Logging failed (attempt ${attempt}): ${String(err)}`);
+    // simple retry once after 1s
+    if (attempt < 1) {
+      await new Promise(r => setTimeout(r, 1000));
+      return logChoice(questionID, selectedChoice, attempt + 1);
+    }
+    // If still failing, queue locally for later flush
+    try {
+      const queue = JSON.parse(localStorage.getItem('logQueue') || '[]');
+      queue.push(payload);
+      localStorage.setItem('logQueue', JSON.stringify(queue));
+      debug('Saved log to local queue for retry later');
+    } catch (e) {
+      debug('Failed to save to local queue: ' + String(e));
+    }
+  }
+}
+
+/* Optionally add a flush function to send queued logs when network returns */
+async function flushLogQueue() {
+  try {
+    const queue = JSON.parse(localStorage.getItem('logQueue') || '[]');
+    if (!Array.isArray(queue) || queue.length === 0) return;
+    for (let i = 0; i < queue.length; i++) {
+      const item = queue[i];
+      try {
+        const resp = await fetch(POST_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item)
+        });
+        if (resp.ok) {
+          // remove first element and continue
+          queue.shift();
+          localStorage.setItem('logQueue', JSON.stringify(queue));
+          i--; // adjust index because we removed current item
+        } else {
+          break; // stop on server error
+        }
+      } catch (_) {
+        break; // stop on network error
+      }
+    }
   } catch (e) {
-    debug("Logging failed: " + String(e));
+    debug('flushLogQueue error: ' + String(e));
   }
 }
 
@@ -415,6 +471,7 @@ function handleTag(tag) {
 </script>
 </body>
 </html>
+
 
 
 
