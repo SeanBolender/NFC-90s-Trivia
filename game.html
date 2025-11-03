@@ -1,199 +1,464 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>90s NFC Hunt - Game</title>
-    <style>
-        /* CSS styles omitted for brevity, ensure they are present */
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f0f8ff; color: #1e3a6a; }
-        .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); }
-        h2 { color: #008080; margin-top: 5px; }
-        .question-box { margin: 25px 0; padding: 25px; border: 3px dashed #FFD700; border-radius: 8px; background-color: #fff9c4; }
-        input[type="text"] { padding: 10px; margin: 10px 0; width: 80%; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 12px 25px; margin-top: 15px; background-color: #FF69B4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        .error { color: #b91c1c; font-weight: bold; }
-        .success { color: #10b981; font-weight: bold; }
-        #debug-info { 
-            margin-top: 30px; 
-            font-size: 12px; 
-            color: #777; 
-            border-top: 1px dashed #ccc; 
-            padding-top: 10px; 
-            text-align: left;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>90s NFC Hunt - Game</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f0f8ff; color: #1e3a6a; }
+    .container { max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 6px 12px rgba(0,0,0,0.12); }
+    h1 { margin-bottom: 4px; }
+    h2 { color: #008080; margin-top: 6px; }
+    .question-box { margin: 25px 0; padding: 20px; border: 3px dashed #FFD700; border-radius: 8px; background-color: #fff9c4; text-align:left; }
+    input[type="text"] { padding: 10px; margin: 10px 0; width: 100%; max-width: 560px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { padding: 12px 20px; margin-top: 10px; background-color: #FF69B4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    .error { color: #b91c1c; font-weight: bold; }
+    .success { color: #10b981; font-weight: bold; }
+    #debug-info { margin-top: 24px; font-size: 12px; color: #777; border-top: 1px dashed #ccc; padding-top: 10px; text-align: left; white-space: pre-wrap; }
+    a.button-like { display:inline-block; margin-top:12px; padding:8px 14px; background:#1e90ff; color:#fff; border-radius:8px; text-decoration:none; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1 id="game-title">90s Time Warp Hunt</h1>
-        <div id="game-content">Loading game...</div>
-    </div>
-    <div id="debug-info"></div>
+  <div class="container" role="main" aria-live="polite">
+    <h1 id="game-title">90s Time Warp Hunt</h1>
+    <div id="game-content">Loading game...</div>
+  </div>
 
-    <script>
-        // =======================================================================================
-        // A. CONSTANTS & GAME DATA
-        // =======================================================================================
-        const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; // REPLACE with your actual Deployment URL
-        
-        const gameData = {
-            sequence: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10'],
-            Q0: { clue: "Find the first NFC chip on the **NSYNC Cutout**." },
-            Q1: {
-                title: "Q1: 🎶 Pop Music",
-                question: "Which group, known for hits like 'Bye Bye Bye,' was founded in 1995 but had its name taken from a famous attraction at Disney World?",
-                correctAnswer: "NSYNC",
-                clue: "Correct! Your next challenge is found by the **Game Boy**.",
-                nextTag: "Q2"
-            },
-            Q2: {
-                title: "Q2: 🕹️ Gaming",
-                question: "What highly addictive puzzle game, invented in the 80s, was included with the purchase of every original Game Boy console?",
-                correctAnswer: "TETRIS",
-                clue: "Awesome! The next chip is taped inside the **Michael Jordan TV Guide**.",
-                nextTag: "Q3"
-            },
-            Q3: {
-                title: "Q3: 🏀 Sports",
-                question: "What iconic number did Michael Jordan wear for most of his career with the Chicago Bulls, and when he played on the 1992 Dream Team?",
-                correctAnswer: "23",
-                clue: "Slam dunk! Your next clue is near the lovable nerd's **favorite cheese snack**.",
-                nextTag: "Q4"
-            },
-            Q4: {
-                title: "Q4: 📺 TV Sitcom",
-                question: "What popular catchphrase, often followed by a backward shrug, was constantly repeated by the lovable nerd Steve Urkel on the show *Family Matters*?",
-                correctAnswer: "DID I DO THAT?",
-                clue: "That's right! Beam over to the captain's chair—the biggest ship is calling for **Riker**.",
-                nextTag: "Q5"
-            },
-            Q5: {
-                title: "Q5: 🖖 Sci-Fi Trek",
-                question: "STAR TREK: TNG: What is the full name of Captain Picard's first officer, who served for all seven seasons of *The Next Generation*?",
-                correctAnswer: "WILLIAM T. RIKER",
-                clue: "Engage! Look for the place where toys first came to life—the **cowboy doll's foot**.",
-                nextTag: "Q6"
-            },
-            Q6: {
-                title: "Q6: 🎬 Animated Film",
-                question: "What was the name of the first-ever feature-length film created entirely using computer-generated imagery (CGI)?",
-                correctAnswer: "TOY STORY",
-                clue: "To infinity and beyond! Now, find the spot where a famous Spanish dance became a worldwide hit on a **boombox**.",
-                nextTag: "Q7"
-            },
-            Q7: {
-                title: "Q7: 💃 Dance Craze",
-                question: "What Spanish one-hit wonder was remixed by the Bayside Boys and became a global dance craze in 1996, spending 14 weeks at #1?",
-                correctAnswer: "MACARENA",
-                clue: "Heeeeeyyy Macarena! Find the book by **R.L. Stine** that details a buzzing fear.",
-                nextTag: "Q8"
-            },
-            Q8: {
-                title: "Q8: 📚 Children's Horror",
-                question: "The book *Why I’m Afraid of Bees* belongs to the famous children’s horror series written by what author?",
-                correctAnswer: "R.L. STINE",
-                clue: "Be warned! The final question is waiting on the **back of the DVD player**.",
-                nextTag: "Q9"
-            },
-            Q9: {
-                title: "Q9: 📀 Home Video Tech",
-                question: "In 1998, a new format war began when the superior **DVD** format won out over its competitor, which was backed by Toshiba. What was the name of the losing format?",
-                correctAnswer: "DIVX",
-                clue: "Movie night success! For the finale, find the subtle **red object** in the next room.",
-                nextTag: "Q10"
-            },
-            Q10: {
-                title: "Q10: 👻 Film Finale",
-                question: "The shocking final reveal and famous line ('I see dead people') belong to which psychological thriller film?",
-                correctAnswer: "THE SIXTH SENSE",
-                clue: "🎉 CONGRATULATIONS! The code is **90SBOOM**. Go to the **freezer** for your grand prize!",
-                nextTag: "WIN"
-            },
-            WIN: {
-                title: "🎉 Hunt Complete!",
-                content: "You mastered the 90s Time Warp! Proceed to the freezer with the code **90SBOOM**."
-            }
-        };
+  <div id="debug-info" aria-hidden="true"></div>
 
-        // =======================================================================================
-        // B. COOKIE / STORAGE FUNCTIONS
-        // =======================================================================================
-        function getCookie(name) {
-            const nameEQ = name + "=";
-            const ca = document.cookie.split(';');
-            for(let i = 0; i < ca.length; i++) {
-                let c = ca[i];
-                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
-                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-            }
-            return null;
-        }
-        
-        function setCookie(name, value, days) {
-            let expires = "";
-            if (days) {
-                const date = new Date();
-                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                expires = "; expires=" + date.toUTCString();
-            }
-            document.cookie = name + "=" + (value || "") + expires + "; path=/";
-        }
-        
-        function eraseCookie(name) {
-            document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        }
+<script>
+/*
+ Updated game.html to:
+ - Read state from localStorage first, then cookie fallback (encoded)
+ - Decode cookies properly
+ - Normalize answers for robust comparisons
+ - Use safe DOM insertion (textContent) to avoid XSS
+ - Gracefully handle missing team name (provide link back to start)
+ - Maintain existing gameData structure and update currentStep in localStorage + cookie
+ - Keep logging but warn about 'no-cors' limitations; prefer enabling CORS server-side
+*/
 
-        // =======================================================================================
-        // C. GLOBAL VARIABLES (Reading state from cookies)
-        // =======================================================================================
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        let teamName = getCookie('teamName'); 
-        let currentStep = getCookie('currentStep') || 'Q0'; 
-        
-        const tagID = urlParams.get('q');
-        const gameContent = document.getElementById('game-content');
-        const debugInfo = document.getElementById('debug-info');
+const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; // REPLACE with your actual Deployment URL
 
+const gameData = {
+  sequence: ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8','Q9','Q10'],
+  Q0: { clue: "Find the first NFC chip on the NSYNC Cutout." },
+  Q1: {
+    title: "Q1: 🎶 Pop Music",
+    question: "Which group, known for hits like 'Bye Bye Bye,' was founded in 1995 but had its name taken from a famous attraction at Disney World?",
+    correctAnswer: "NSYNC",
+    clue: "Correct! Your next challenge is found by the Game Boy.",
+    nextTag: "Q2"
+  },
+  Q2: {
+    title: "Q2: 🕹️ Gaming",
+    question: "What highly addictive puzzle game, invented in the 80s, was included with the purchase of every original Game Boy console?",
+    correctAnswer: "TETRIS",
+    clue: "Awesome! The next chip is taped inside the Michael Jordan TV Guide.",
+    nextTag: "Q3"
+  },
+  Q3: {
+    title: "Q3: 🏀 Sports",
+    question: "What iconic number did Michael Jordan wear for most of his career with the Chicago Bulls, and when he played on the 1992 Dream Team?",
+    correctAnswer: "23",
+    clue: "Slam dunk! Your next clue is near the lovable nerd's favorite cheese snack.",
+    nextTag: "Q4"
+  },
+  Q4: {
+    title: "Q4: 📺 TV Sitcom",
+    question: "What popular catchphrase, often followed by a backward shrug, was constantly repeated by the lovable nerd Steve Urkel on the show Family Matters?",
+    correctAnswer: "DID I DO THAT?",
+    clue: "That's right! Beam over to the captain's chair—the biggest ship is calling for Riker.",
+    nextTag: "Q5"
+  },
+  Q5: {
+    title: "Q5: 🖖 Sci-Fi Trek",
+    question: "STAR TREK: TNG: What is the full name of Captain Picard's first officer, who served for all seven seasons of The Next Generation?",
+    correctAnswer: "WILLIAM T. RIKER",
+    clue: "Engage! Look for the place where toys first came to life—the cowboy doll's foot.",
+    nextTag: "Q6"
+  },
+  Q6: {
+    title: "Q6: 🎬 Animated Film",
+    question: "What was the name of the first-ever feature-length film created entirely using computer-generated imagery (CGI)?",
+    correctAnswer: "TOY STORY",
+    clue: "To infinity and beyond! Now, find the spot where a famous Spanish dance became a worldwide hit on a boombox.",
+    nextTag: "Q7"
+  },
+  Q7: {
+    title: "Q7: 💃 Dance Craze",
+    question: "What Spanish one-hit wonder was remixed by the Bayside Boys and became a global dance craze in 1996, spending 14 weeks at #1?",
+    correctAnswer: "MACARENA",
+    clue: "Heeeeeyyy Macarena! Find the book by R.L. Stine that details a buzzing fear.",
+    nextTag: "Q8"
+  },
+  Q8: {
+    title: "Q8: 📚 Children's Horror",
+    question: "The book Why I’m Afraid of Bees belongs to the famous children’s horror series written by what author?",
+    correctAnswer: "R.L. STINE",
+    clue: "Be warned! The final question is waiting on the back of the DVD player.",
+    nextTag: "Q9"
+  },
+  Q9: {
+    title: "Q9: 📀 Home Video Tech",
+    question: "In 1998, a new format war began when the superior DVD format won out over its competitor, which was backed by Toshiba. What was the name of the losing format?",
+    correctAnswer: "DIVX",
+    clue: "Movie night success! For the finale, find the subtle red object in the next room.",
+    nextTag: "Q10"
+  },
+  Q10: {
+    title: "Q10: 👻 Film Finale",
+    question: "The shocking final reveal and famous line ('I see dead people') belong to which psychological thriller film?",
+    correctAnswer: "THE SIXTH SENSE",
+    clue: "🎉 CONGRATULATIONS! The code is 90SBOOM. Go to the freezer for your grand prize!",
+    nextTag: "WIN"
+  },
+  WIN: {
+    title: "🎉 Hunt Complete!",
+    content: "You mastered the 90s Time Warp! Proceed to the freezer with the code 90SBOOM."
+  }
+};
 
-        // =======================================================================================
-        // D. CORE GAME LOGIC FUNCTIONS
-        // =======================================================================================
+// ----------------- storage helpers -----------------
+function encodeCookieName(name) { return encodeURIComponent(name); }
+function decodeCookieValue(val) { try { return decodeURIComponent(val); } catch (e) { return val; } }
 
-        function isNextStep(scannedID) {
-            const currentIndex = gameData.sequence.indexOf(currentStep);
-            const nextIndex = currentIndex + 1;
-            const expectedNextID = gameData.sequence[nextIndex];
-            return scannedID === expectedNextID;
-        }
+function getCookie(name) {
+  if (!name) return null;
+  const encodedName = encodeCookieName(name) + "=";
+  const parts = document.cookie.split(';');
+  for (let i = 0; i < parts.length; i++) {
+    let c = parts[i].trim();
+    if (c.indexOf(encodedName) === 0) {
+      return decodeCookieValue(c.substring(encodedName.length));
+    }
+  }
+  return null;
+}
 
-        async function logAnswer(questionID, answer, correct) {
-            const data = {
-                Team: teamName,
-                Question: questionID,
-                Answer: answer,
-                Correct: correct ? 'YES' : 'NO'
-            };
+function setCookie(name, value, days) {
+  if (!name) return;
+  const n = encodeCookieName(name);
+  const v = encodeURIComponent(value || "");
+  let expires = "";
+  if (typeof days === "number" && days > 0) {
+    const date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    expires = "; expires=" + date.toUTCString();
+  }
+  // SameSite=Lax and Secure; adjust as needed
+  document.cookie = `${n}=${v}${expires}; path=/; SameSite=Lax; Secure`;
+}
 
-            await fetch(POST_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-        }
+// ----------------- utility functions -----------------
 
-        async function submitAnswer(questionID, correctAnswer) {
-            const answerInput = document.getElementById('answer-input');
-            const rawAnswer = answerInput ? answerInput.value.trim() : '';
-            const submittedAnswer = rawAnswer.toUpperCase();
-            const isCorrect = submittedAnswer === correctAnswer.toUpperCase();
+// Normalize strings for comparison: uppercase, strip non-alphanumerics
+function normalizeForCompare(s) {
+  if (s === null || s === undefined) return "";
+  return String(s).toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
 
-            await logAnswer(questionID, submittedAnswer, isCorrect);
+// Safe text insertion
+function setText(idOrEl, text) {
+  const el = (typeof idOrEl === 'string') ? document.getElementById(idOrEl) : idOrEl;
+  if (!el) return;
+  el.textContent = text;
+}
 
-            if (isCorrect) {
-                const nextTag = gameData[questionID].nextTag;
-                const nextClue = gameData[questionID].clue;
-                
-                // Update the state in the cookie and
+// debug helper
+function debug(msg) {
+  const el = document.getElementById('debug-info');
+  if (!el) return;
+  el.textContent += msg + "\n";
+}
+
+// ----------------- read state (localStorage preferred) -----------------
+const urlParams = new URLSearchParams(window.location.search);
+const tagID = urlParams.get('q'); // optional NFC tag id via query param
+
+let teamName = null;
+let currentStep = null;
+
+try {
+  teamName = localStorage.getItem('teamName') || null;
+  currentStep = localStorage.getItem('currentStep') || null;
+} catch (e) {
+  // localStorage may be blocked; fallback to cookies
+  teamName = null;
+  currentStep = null;
+}
+if (!teamName) teamName = getCookie('teamName');
+if (!currentStep) currentStep = getCookie('currentStep') || 'Q0';
+if (!currentStep) currentStep = 'Q0';
+
+// ----------------- guard if no teamName -----------------
+const gameContent = document.getElementById('game-content');
+
+if (!teamName) {
+  gameContent.innerHTML = "";
+  const p = document.createElement('p');
+  p.className = "error";
+  p.textContent = "No team name found. Please start from the Start page to register your team.";
+  gameContent.appendChild(p);
+
+  const back = document.createElement('a');
+  back.href = "start.html";
+  back.className = "button-like";
+  back.textContent = "Go to Start";
+  gameContent.appendChild(back);
+
+  // For convenience, also show a note about possible cookie/localStorage blocking
+  const note = document.createElement('p');
+  note.style.marginTop = '12px';
+  note.style.fontSize = '0.95em';
+  note.textContent = "If you followed a direct link, the start page may not have set your team. Try the Start page.";
+  gameContent.appendChild(note);
+
+  // stop further execution
+  debug("No team name found; halted game load.");
+  throw new Error("No team name found");
+}
+
+// ----------------- core game rendering & logic -----------------
+function saveState(step) {
+  try {
+    localStorage.setItem('currentStep', step);
+  } catch (e) {
+    // localStorage may be unavailable
+  }
+  setCookie('currentStep', step, 7);
+  currentStep = step;
+  debug(`State saved: currentStep=${step}`);
+}
+
+function isNextStep(scannedID) {
+  // scannedID expected to be like 'Q1' etc.
+  const currentIndex = gameData.sequence.indexOf(currentStep);
+  const nextIndex = currentIndex + 1;
+  const expectedNextID = gameData.sequence[nextIndex];
+  return scannedID === expectedNextID;
+}
+
+// Logging helper — note: 'no-cors' will make body opaque on many endpoints.
+// If you control the endpoint, enable CORS and remove 'no-cors' for reliable logging.
+async function logAnswer(questionID, answer, correct) {
+  const data = {
+    Team: teamName,
+    Question: questionID,
+    Answer: answer,
+    Correct: correct ? 'YES' : 'NO',
+    Timestamp: new Date().toISOString()
+  };
+
+  try {
+    await fetch(POST_URL, {
+      method: 'POST',
+      // mode: 'no-cors', // if endpoint supports CORS, remove/comment this line for reliable logging
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    debug("Logged answer (attempted).");
+  } catch (e) {
+    debug("Logging failed: " + String(e));
+  }
+}
+
+async function submitAnswer(questionID, correctAnswer) {
+  const answerInput = document.getElementById('answer-input');
+  const rawAnswer = answerInput ? answerInput.value.trim() : '';
+  const submittedNorm = normalizeForCompare(rawAnswer);
+  const expectedNorm = normalizeForCompare(correctAnswer);
+  const isCorrect = submittedNorm === expectedNorm;
+
+  await logAnswer(questionID, rawAnswer, isCorrect);
+
+  const feedback = document.getElementById('feedback');
+  if (isCorrect) {
+    feedback.textContent = "Correct!";
+    feedback.className = "success";
+    // update state to next tag
+    const nextTag = gameData[questionID] && gameData[questionID].nextTag;
+    const nextClue = gameData[questionID] && gameData[questionID].clue;
+    if (nextTag) {
+      saveState(nextTag);
+    }
+    // show clue + link back to scanning flow (or show next question depending on flow)
+    showClueAndNext(nextClue);
+  } else {
+    feedback.textContent = "Incorrect — try again.";
+    feedback.className = "error";
+  }
+}
+
+function showClueAndNext(clue) {
+  // Show the clue text safely
+  const clueEl = document.createElement('p');
+  clueEl.textContent = clue || '';
+  clueEl.style.marginTop = '12px';
+  clueEl.style.fontWeight = '600';
+  clueEl.style.color = '#0b6623';
+  // Append to game content area
+  const container = document.getElementById('game-content');
+  container.innerHTML = "";
+  const title = document.createElement('h2');
+  title.textContent = "Clue";
+  container.appendChild(title);
+  container.appendChild(clueEl);
+
+  const back = document.createElement('a');
+  back.href = "start.html";
+  back.className = "button-like";
+  back.textContent = "Restart / New Team";
+  container.appendChild(back);
+}
+
+function renderQuestion(questionID) {
+  const q = gameData[questionID];
+  if (!q) {
+    // fallback show current clue or default message
+    const container = document.getElementById('game-content');
+    container.innerHTML = "";
+    const p = document.createElement('p');
+    p.textContent = "No question found for this tag. If you scanned a tag, it might be out of order.";
+    container.appendChild(p);
+    return;
+  }
+
+  const container = document.getElementById('game-content');
+  container.innerHTML = "";
+
+  const title = document.createElement('h2');
+  title.textContent = q.title || questionID;
+  container.appendChild(title);
+
+  const box = document.createElement('div');
+  box.className = 'question-box';
+
+  const prompt = document.createElement('p');
+  prompt.textContent = q.question || "";
+  box.appendChild(prompt);
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = 'answer-input';
+  input.name = 'answer';
+  input.placeholder = 'Enter your answer here';
+  input.setAttribute('aria-label', 'Answer input');
+  box.appendChild(input);
+
+  const submit = document.createElement('button');
+  submit.type = 'button';
+  submit.textContent = 'Submit Answer';
+  submit.addEventListener('click', function() { submitAnswer(questionID, q.correctAnswer); });
+  box.appendChild(submit);
+
+  const feedback = document.createElement('p');
+  feedback.id = 'feedback';
+  feedback.setAttribute('role','status');
+  feedback.style.minHeight = '1.2em';
+  box.appendChild(feedback);
+
+  container.appendChild(box);
+  input.focus();
+}
+
+// If user navigated with a tag param, handle it
+function handleTag(tag) {
+  // If tag is the expected next step, render that question.
+  // If tag equals 'WIN' or similar, show WIN screen.
+  if (!tag) {
+    // No tag scanned; show current step's clue or prompt user to scan a tag
+    const container = document.getElementById('game-content');
+    container.innerHTML = "";
+    const welcome = document.createElement('p');
+    welcome.textContent = `Team: ${teamName}`;
+    welcome.style.fontWeight = '600';
+    container.appendChild(welcome);
+
+    // If currentStep is Q0, give initial clue
+    if (currentStep === 'Q0') {
+      const p = document.createElement('p');
+      p.textContent = gameData.Q0.clue;
+      container.appendChild(p);
+    } else if (currentStep === 'WIN') {
+      // show win content
+      const h = document.createElement('h2');
+      h.textContent = gameData.WIN.title;
+      container.appendChild(h);
+      const c = document.createElement('p');
+      c.textContent = gameData.WIN.content;
+      container.appendChild(c);
+    } else {
+      // show the next question that the team should be at (based on currentStep)
+      // currentStep is the tag the team is expected to scan to get the next question
+      const nextIndex = Math.max(0, gameData.sequence.indexOf(currentStep));
+      const expected = currentStep;
+      const note = document.createElement('p');
+      note.textContent = `You are currently at ${expected}. Scan the next tag or use the Start page to restart.`;
+      container.appendChild(note);
+    }
+
+    // helper link back to start
+    const startLink = document.createElement('a');
+    startLink.href = "start.html";
+    startLink.className = "button-like";
+    startLink.textContent = "Restart / New Team";
+    container.appendChild(startLink);
+    return;
+  }
+
+  // Normalize tag param (some tag readers might pass numbers / lower case)
+  const normalizedTag = (String(tag)).toUpperCase();
+
+  if (normalizedTag === 'WIN' || normalizedTag === 'Q10' && gameData[normalizedTag]) {
+    // show final or WIN
+    const container = document.getElementById('game-content');
+    container.innerHTML = "";
+    const h = document.createElement('h2');
+    h.textContent = gameData.WIN.title;
+    container.appendChild(h);
+    const c = document.createElement('p');
+    c.textContent = gameData.WIN.content;
+    container.appendChild(c);
+    saveState('WIN');
+    return;
+  }
+
+  // If scanned tag equals the next expected tag, render question for that tag
+  // Determine expected next tag for this team
+  const currentIndex = gameData.sequence.indexOf(currentStep);
+  const expectedNext = gameData.sequence[currentIndex + 1] || gameData.sequence[0];
+
+  if (normalizedTag === expectedNext) {
+    // Render the question associated with the expectedNext (which is a Q#)
+    renderQuestion(normalizedTag);
+  } else {
+    // If scanned out-of-order, show informative message
+    const container = document.getElementById('game-content');
+    container.innerHTML = "";
+    const p = document.createElement('p');
+    p.className = 'error';
+    p.textContent = `Scanned tag (${normalizedTag}) is not the expected next tag for your team. Expected: ${expectedNext}.`;
+    container.appendChild(p);
+
+    const hint = document.createElement('p');
+    hint.textContent = "If you believe this is an error, check with the game host or use the Start page to reset.";
+    container.appendChild(hint);
+
+    const startLink = document.createElement('a');
+    startLink.href = "start.html";
+    startLink.className = "button-like";
+    startLink.textContent = "Restart / New Team";
+    container.appendChild(startLink);
+  }
+}
+
+// initialize UI
+(function init() {
+  debug(`Init: team=${teamName} currentStep=${currentStep} tagParam=${tagID || '(none)'}`);
+  handleTag(tagID);
+})();
+
+</script>
+</body>
+</html>
