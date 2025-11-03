@@ -28,17 +28,16 @@
 
 <script>
 /*
- Multiple-choice version:
- - Each question now includes choices: ["A","B","C","D"]
- - When a choice button is clicked the selection is POSTed to POST_URL with Team, Question, Choice, Timestamp
- - No correctness feedback is shown in the UI; instead the next clue is presented and currentStep advances
- - localStorage is preferred and cookie fallback remains
- - Ensure server-side (Google Apps Script) supports CORS for reliable logging
+ Multiple-choice game.html
+ - Renders 4-choice buttons per question
+ - Logs selection via fetch POST to POST_URL (JSON)
+ - Advances immediately to show clue (no correctness feedback)
+ - Reads/writes state to localStorage and cookie fallback
+ - Safe DOM insertion via textContent
 */
 
-const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; // REPLACE with your actual Deployment URL (enable CORS)
+const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; // ← REPLACE with your Apps Script URL
 
-// Game data with choices arrays (four choices per question)
 const gameData = {
   sequence: ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8','Q9','Q10'],
   Q0: { clue: "Find the first NFC chip on the NSYNC Cutout." },
@@ -155,16 +154,10 @@ function setCookie(name, value, days) {
     date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
     expires = "; expires=" + date.toUTCString();
   }
-  // SameSite=Lax and Secure recommended for GitHub Pages
   document.cookie = `${n}=${v}${expires}; path=/; SameSite=Lax; Secure`;
 }
 
 // ----------------- utility functions -----------------
-function normalizeForCompare(s) {
-  if (s === null || s === undefined) return "";
-  return String(s).toUpperCase().replace(/[^A-Z0-9]/g, "");
-}
-
 function debug(msg) {
   const el = document.getElementById('debug-info');
   if (!el) return;
@@ -229,26 +222,30 @@ async function logChoice(questionID, selectedChoice) {
     Timestamp: new Date().toISOString()
   };
   try {
-    await fetch(POST_URL, {
+    const resp = await fetch(POST_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    debug(`Logged choice for ${questionID}: ${selectedChoice}`);
+    // attempt to read JSON; many endpoints return JSON
+    try {
+      const j = await resp.json();
+      debug(`Logged ${questionID} response: ${JSON.stringify(j)}`);
+    } catch (err) {
+      debug(`Logged ${questionID}: server returned non-JSON or no body`);
+    }
   } catch (e) {
     debug("Logging failed: " + String(e));
   }
 }
 
 // When a choice is selected: log it, advance state, show clue (no correctness feedback)
-async function handleChoice(questionID, selectedChoice) {
-  // Log asynchronously but do not delay showing the clue
-  logChoice(questionID, selectedChoice).catch(() => {});
+function handleChoice(questionID, selectedChoice) {
+  // Fire-and-forget logging (don't block UI)
+  logChoice(questionID, selectedChoice).catch(()=>{});
   const nextTag = gameData[questionID] && gameData[questionID].nextTag;
   const nextClue = gameData[questionID] && gameData[questionID].clue;
-
   if (nextTag) saveState(nextTag);
-  // show clue immediately
   showClueAndNext(nextClue);
 }
 
@@ -307,7 +304,6 @@ function renderQuestion(questionID) {
   const choicesDiv = document.createElement('div');
   choicesDiv.className = 'choices';
 
-  // Ensure there are four choices; if fewer, pad with empty strings
   const choices = Array.isArray(q.choices) ? q.choices.slice(0,4) : [];
   while (choices.length < 4) choices.push('');
 
@@ -316,10 +312,8 @@ function renderQuestion(questionID) {
     btn.type = 'button';
     btn.className = 'choice-btn';
     btn.setAttribute('aria-label', `Choice ${idx+1}`);
-    // safe insertion of the choice text
     btn.textContent = choiceText || `Option ${idx+1}`;
     btn.addEventListener('click', function () {
-      // disable all buttons quickly to prevent double-tap
       const btns = choicesDiv.querySelectorAll('button');
       btns.forEach(b => b.disabled = true);
       handleChoice(questionID, choiceText || `Option ${idx+1}`);
@@ -334,7 +328,6 @@ function renderQuestion(questionID) {
 // If user navigated with a tag param, handle it
 function handleTag(tag) {
   if (!tag) {
-    // No tag: show team summary and either initial clue or status
     const container = document.getElementById('game-content');
     container.innerHTML = "";
     const teamP = document.createElement('p');
@@ -354,7 +347,6 @@ function handleTag(tag) {
       c.textContent = gameData.WIN.content;
       container.appendChild(c);
     } else {
-      // Show instruction
       const note = document.createElement('p');
       note.textContent = `You are currently at ${currentStep}. Scan the next tag to answer the next question.`;
       container.appendChild(note);
@@ -383,7 +375,6 @@ function handleTag(tag) {
     return;
   }
 
-  // Determine expectedNext tag for this team
   const currentIndex = gameData.sequence.indexOf(currentStep);
   const expectedNext = gameData.sequence[currentIndex + 1] || gameData.sequence[0];
 
