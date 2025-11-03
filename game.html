@@ -36,7 +36,8 @@
  - Safe DOM insertion via textContent
 */
 
-const POST_URL = "https://script.google.com/macros/s/AKfycbzDTWJUAi5Ix9hZoeSOpwNAH_eyS1x1z0se0VDu8wUGP5cDLJ6OjXA2iOy3TGg8odZ4/exec"; // ← REPLACE with your Apps Script URL
+// <<< SET THIS TO YOUR APPS SCRIPT /exec URL AFTER DEPLOYMENT >>>
+const POST_URL = "https://script.google.com/macros/s/AKfycbzDTWJUAi5Ix9hZoeSOpwNAH_eyS1x1z0se0VDu8wUGP5cDLJ6OjXA2iOy3TGg8odZ4/exec";
 
 const gameData = {
   sequence: ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8','Q9','Q10'],
@@ -431,14 +432,14 @@ function handleTag(tag) {
     return;
   }
 
-  // *** FIXED: compute expectedNext using currentStep semantics ***
+  // Determine expectedNext tag: currentStep stores the tag the team should scan next
   let expectedNext;
   if (currentStep === 'Q0') {
     expectedNext = gameData.sequence[0]; // Q1
   } else if (currentStep === 'WIN') {
     expectedNext = 'WIN';
   } else {
-    expectedNext = currentStep; // currentStep already stores the tag the team should scan next
+    expectedNext = currentStep;
   }
 
   if (normalizedTag === expectedNext) {
@@ -471,8 +472,3 @@ function handleTag(tag) {
 </script>
 </body>
 </html>
-
-
-
-
-
