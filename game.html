@@ -10,10 +10,10 @@
     h1 { margin-bottom: 4px; }
     h2 { color: #008080; margin-top: 6px; }
     .question-box { margin: 25px 0; padding: 20px; border: 3px dashed #FFD700; border-radius: 8px; background-color: #fff9c4; text-align:left; }
-    input[type="text"] { padding: 10px; margin: 10px 0; width: 100%; max-width: 560px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button { padding: 12px 20px; margin-top: 10px; background-color: #FF69B4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    .choices { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+    .choice-btn { text-align:left; padding:10px 12px; border-radius:8px; border:1px solid #ccc; background:#fff; cursor:pointer; font-size:15px; }
+    .choice-btn:focus { outline:3px solid rgba(0,128,128,0.2); }
     .error { color: #b91c1c; font-weight: bold; }
-    .success { color: #10b981; font-weight: bold; }
     #debug-info { margin-top: 24px; font-size: 12px; color: #777; border-top: 1px dashed #ccc; padding-top: 10px; text-align: left; white-space: pre-wrap; }
     a.button-like { display:inline-block; margin-top:12px; padding:8px 14px; background:#1e90ff; color:#fff; border-radius:8px; text-decoration:none; }
   </style>
@@ -28,18 +28,17 @@
 
 <script>
 /*
- Updated game.html to:
- - Read state from localStorage first, then cookie fallback (encoded)
- - Decode cookies properly
- - Normalize answers for robust comparisons
- - Use safe DOM insertion (textContent) to avoid XSS
- - Gracefully handle missing team name (provide link back to start)
- - Maintain existing gameData structure and update currentStep in localStorage + cookie
- - Keep logging but warn about 'no-cors' limitations; prefer enabling CORS server-side
+ Multiple-choice version:
+ - Each question now includes choices: ["A","B","C","D"]
+ - When a choice button is clicked the selection is POSTed to POST_URL with Team, Question, Choice, Timestamp
+ - No correctness feedback is shown in the UI; instead the next clue is presented and currentStep advances
+ - localStorage is preferred and cookie fallback remains
+ - Ensure server-side (Google Apps Script) supports CORS for reliable logging
 */
 
-const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; // REPLACE with your actual Deployment URL
+const POST_URL = "https://script.google.com/macros/s/XXXXXX/exec"; // REPLACE with your actual Deployment URL (enable CORS)
 
+// Game data with choices arrays (four choices per question)
 const gameData = {
   sequence: ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8','Q9','Q10'],
   Q0: { clue: "Find the first NFC chip on the NSYNC Cutout." },
@@ -47,6 +46,7 @@ const gameData = {
     title: "Q1: 🎶 Pop Music",
     question: "Which group, known for hits like 'Bye Bye Bye,' was founded in 1995 but had its name taken from a famous attraction at Disney World?",
     correctAnswer: "NSYNC",
+    choices: ["BACKSTREET BOYS", "NSYNC", "98 DEGREES", "BOYS II MEN"],
     clue: "Correct! Your next challenge is found by the Game Boy.",
     nextTag: "Q2"
   },
@@ -54,6 +54,7 @@ const gameData = {
     title: "Q2: 🕹️ Gaming",
     question: "What highly addictive puzzle game, invented in the 80s, was included with the purchase of every original Game Boy console?",
     correctAnswer: "TETRIS",
+    choices: ["TETRIS", "PUZZLE BOBBLE", "SNAKE", "SOLITAIRE"],
     clue: "Awesome! The next chip is taped inside the Michael Jordan TV Guide.",
     nextTag: "Q3"
   },
@@ -61,6 +62,7 @@ const gameData = {
     title: "Q3: 🏀 Sports",
     question: "What iconic number did Michael Jordan wear for most of his career with the Chicago Bulls, and when he played on the 1992 Dream Team?",
     correctAnswer: "23",
+    choices: ["24", "23", "32", "45"],
     clue: "Slam dunk! Your next clue is near the lovable nerd's favorite cheese snack.",
     nextTag: "Q4"
   },
@@ -68,6 +70,7 @@ const gameData = {
     title: "Q4: 📺 TV Sitcom",
     question: "What popular catchphrase, often followed by a backward shrug, was constantly repeated by the lovable nerd Steve Urkel on the show Family Matters?",
     correctAnswer: "DID I DO THAT?",
+    choices: ["WHATCHOO TALKIN' 'BOUT?", "DID I DO THAT?", "HOW YOU DOIN'?", "I'LL BE BACK"],
     clue: "That's right! Beam over to the captain's chair—the biggest ship is calling for Riker.",
     nextTag: "Q5"
   },
@@ -75,6 +78,7 @@ const gameData = {
     title: "Q5: 🖖 Sci-Fi Trek",
     question: "STAR TREK: TNG: What is the full name of Captain Picard's first officer, who served for all seven seasons of The Next Generation?",
     correctAnswer: "WILLIAM T. RIKER",
+    choices: ["WILLIAM RIKER", "WILLIAM T. RIKER", "WILL RIKER", "WILLIAM R. RIKER"],
     clue: "Engage! Look for the place where toys first came to life—the cowboy doll's foot.",
     nextTag: "Q6"
   },
@@ -82,6 +86,7 @@ const gameData = {
     title: "Q6: 🎬 Animated Film",
     question: "What was the name of the first-ever feature-length film created entirely using computer-generated imagery (CGI)?",
     correctAnswer: "TOY STORY",
+    choices: ["TOY STORY", "TRON", "TOY SOLDIERS", "A BUG'S LIFE"],
     clue: "To infinity and beyond! Now, find the spot where a famous Spanish dance became a worldwide hit on a boombox.",
     nextTag: "Q7"
   },
@@ -89,6 +94,7 @@ const gameData = {
     title: "Q7: 💃 Dance Craze",
     question: "What Spanish one-hit wonder was remixed by the Bayside Boys and became a global dance craze in 1996, spending 14 weeks at #1?",
     correctAnswer: "MACARENA",
+    choices: ["LA MACARENA", "MACARENA", "BASURA", "DESPACITO"],
     clue: "Heeeeeyyy Macarena! Find the book by R.L. Stine that details a buzzing fear.",
     nextTag: "Q8"
   },
@@ -96,6 +102,7 @@ const gameData = {
     title: "Q8: 📚 Children's Horror",
     question: "The book Why I’m Afraid of Bees belongs to the famous children’s horror series written by what author?",
     correctAnswer: "R.L. STINE",
+    choices: ["R.L. STINE", "CHRISTOPHER PAOLINI", "J.K. ROWLING", "R.L. STEINER"],
     clue: "Be warned! The final question is waiting on the back of the DVD player.",
     nextTag: "Q9"
   },
@@ -103,6 +110,7 @@ const gameData = {
     title: "Q9: 📀 Home Video Tech",
     question: "In 1998, a new format war began when the superior DVD format won out over its competitor, which was backed by Toshiba. What was the name of the losing format?",
     correctAnswer: "DIVX",
+    choices: ["HD DVD", "DIVX", "VISTA", "VHS++"],
     clue: "Movie night success! For the finale, find the subtle red object in the next room.",
     nextTag: "Q10"
   },
@@ -110,6 +118,7 @@ const gameData = {
     title: "Q10: 👻 Film Finale",
     question: "The shocking final reveal and famous line ('I see dead people') belong to which psychological thriller film?",
     correctAnswer: "THE SIXTH SENSE",
+    choices: ["SEVENTH HEAVEN", "THE SIXTH SENSE", "SIX SENSES", "UNBREAKABLE"],
     clue: "🎉 CONGRATULATIONS! The code is 90SBOOM. Go to the freezer for your grand prize!",
     nextTag: "WIN"
   },
@@ -146,26 +155,16 @@ function setCookie(name, value, days) {
     date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
     expires = "; expires=" + date.toUTCString();
   }
-  // SameSite=Lax and Secure; adjust as needed
+  // SameSite=Lax and Secure recommended for GitHub Pages
   document.cookie = `${n}=${v}${expires}; path=/; SameSite=Lax; Secure`;
 }
 
 // ----------------- utility functions -----------------
-
-// Normalize strings for comparison: uppercase, strip non-alphanumerics
 function normalizeForCompare(s) {
   if (s === null || s === undefined) return "";
   return String(s).toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
-// Safe text insertion
-function setText(idOrEl, text) {
-  const el = (typeof idOrEl === 'string') ? document.getElementById(idOrEl) : idOrEl;
-  if (!el) return;
-  el.textContent = text;
-}
-
-// debug helper
 function debug(msg) {
   const el = document.getElementById('debug-info');
   if (!el) return;
@@ -174,7 +173,7 @@ function debug(msg) {
 
 // ----------------- read state (localStorage preferred) -----------------
 const urlParams = new URLSearchParams(window.location.search);
-const tagID = urlParams.get('q'); // optional NFC tag id via query param
+const tagID = urlParams.get('q');
 
 let teamName = null;
 let currentStep = null;
@@ -182,11 +181,8 @@ let currentStep = null;
 try {
   teamName = localStorage.getItem('teamName') || null;
   currentStep = localStorage.getItem('currentStep') || null;
-} catch (e) {
-  // localStorage may be blocked; fallback to cookies
-  teamName = null;
-  currentStep = null;
-}
+} catch (e) { teamName = null; currentStep = null; }
+
 if (!teamName) teamName = getCookie('teamName');
 if (!currentStep) currentStep = getCookie('currentStep') || 'Q0';
 if (!currentStep) currentStep = 'Q0';
@@ -207,119 +203,89 @@ if (!teamName) {
   back.textContent = "Go to Start";
   gameContent.appendChild(back);
 
-  // For convenience, also show a note about possible cookie/localStorage blocking
   const note = document.createElement('p');
   note.style.marginTop = '12px';
   note.style.fontSize = '0.95em';
   note.textContent = "If you followed a direct link, the start page may not have set your team. Try the Start page.";
   gameContent.appendChild(note);
 
-  // stop further execution
-  debug("No team name found; halted game load.");
-  throw new Error("No team name found");
+  debug("No team name; stopping execution.");
+  throw new Error("No team name");
 }
 
-// ----------------- core game rendering & logic -----------------
+// ----------------- core functions -----------------
 function saveState(step) {
-  try {
-    localStorage.setItem('currentStep', step);
-  } catch (e) {
-    // localStorage may be unavailable
-  }
+  try { localStorage.setItem('currentStep', step); } catch (e) {}
   setCookie('currentStep', step, 7);
   currentStep = step;
   debug(`State saved: currentStep=${step}`);
 }
 
-function isNextStep(scannedID) {
-  // scannedID expected to be like 'Q1' etc.
-  const currentIndex = gameData.sequence.indexOf(currentStep);
-  const nextIndex = currentIndex + 1;
-  const expectedNextID = gameData.sequence[nextIndex];
-  return scannedID === expectedNextID;
-}
-
-// Logging helper — note: 'no-cors' will make body opaque on many endpoints.
-// If you control the endpoint, enable CORS and remove 'no-cors' for reliable logging.
-async function logAnswer(questionID, answer, correct) {
+async function logChoice(questionID, selectedChoice) {
   const data = {
     Team: teamName,
     Question: questionID,
-    Answer: answer,
-    Correct: correct ? 'YES' : 'NO',
+    Choice: selectedChoice,
     Timestamp: new Date().toISOString()
   };
-
   try {
     await fetch(POST_URL, {
       method: 'POST',
-      // mode: 'no-cors', // if endpoint supports CORS, remove/comment this line for reliable logging
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    debug("Logged answer (attempted).");
+    debug(`Logged choice for ${questionID}: ${selectedChoice}`);
   } catch (e) {
     debug("Logging failed: " + String(e));
   }
 }
 
-async function submitAnswer(questionID, correctAnswer) {
-  const answerInput = document.getElementById('answer-input');
-  const rawAnswer = answerInput ? answerInput.value.trim() : '';
-  const submittedNorm = normalizeForCompare(rawAnswer);
-  const expectedNorm = normalizeForCompare(correctAnswer);
-  const isCorrect = submittedNorm === expectedNorm;
+// When a choice is selected: log it, advance state, show clue (no correctness feedback)
+async function handleChoice(questionID, selectedChoice) {
+  // Log asynchronously but do not delay showing the clue
+  logChoice(questionID, selectedChoice).catch(() => {});
+  const nextTag = gameData[questionID] && gameData[questionID].nextTag;
+  const nextClue = gameData[questionID] && gameData[questionID].clue;
 
-  await logAnswer(questionID, rawAnswer, isCorrect);
-
-  const feedback = document.getElementById('feedback');
-  if (isCorrect) {
-    feedback.textContent = "Correct!";
-    feedback.className = "success";
-    // update state to next tag
-    const nextTag = gameData[questionID] && gameData[questionID].nextTag;
-    const nextClue = gameData[questionID] && gameData[questionID].clue;
-    if (nextTag) {
-      saveState(nextTag);
-    }
-    // show clue + link back to scanning flow (or show next question depending on flow)
-    showClueAndNext(nextClue);
-  } else {
-    feedback.textContent = "Incorrect — try again.";
-    feedback.className = "error";
-  }
+  if (nextTag) saveState(nextTag);
+  // show clue immediately
+  showClueAndNext(nextClue);
 }
 
+// Render the clue + a restart link
 function showClueAndNext(clue) {
-  // Show the clue text safely
-  const clueEl = document.createElement('p');
-  clueEl.textContent = clue || '';
-  clueEl.style.marginTop = '12px';
-  clueEl.style.fontWeight = '600';
-  clueEl.style.color = '#0b6623';
-  // Append to game content area
   const container = document.getElementById('game-content');
   container.innerHTML = "";
+
   const title = document.createElement('h2');
   title.textContent = "Clue";
   container.appendChild(title);
-  container.appendChild(clueEl);
 
-  const back = document.createElement('a');
-  back.href = "start.html";
-  back.className = "button-like";
-  back.textContent = "Restart / New Team";
-  container.appendChild(back);
+  const c = document.createElement('p');
+  c.textContent = clue || '';
+  c.style.fontWeight = '600';
+  container.appendChild(c);
+
+  const continueNote = document.createElement('p');
+  continueNote.style.marginTop = '8px';
+  continueNote.textContent = "Proceed to scan the next tag in the physical location.";
+  container.appendChild(continueNote);
+
+  const restart = document.createElement('a');
+  restart.href = "start.html";
+  restart.className = "button-like";
+  restart.textContent = "Restart / New Team";
+  container.appendChild(restart);
 }
 
+// Render question with multiple choice buttons
 function renderQuestion(questionID) {
   const q = gameData[questionID];
   if (!q) {
-    // fallback show current clue or default message
     const container = document.getElementById('game-content');
     container.innerHTML = "";
     const p = document.createElement('p');
-    p.textContent = "No question found for this tag. If you scanned a tag, it might be out of order.";
+    p.textContent = "Question not found.";
     container.appendChild(p);
     return;
   }
@@ -338,50 +304,49 @@ function renderQuestion(questionID) {
   prompt.textContent = q.question || "";
   box.appendChild(prompt);
 
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = 'answer-input';
-  input.name = 'answer';
-  input.placeholder = 'Enter your answer here';
-  input.setAttribute('aria-label', 'Answer input');
-  box.appendChild(input);
+  const choicesDiv = document.createElement('div');
+  choicesDiv.className = 'choices';
 
-  const submit = document.createElement('button');
-  submit.type = 'button';
-  submit.textContent = 'Submit Answer';
-  submit.addEventListener('click', function() { submitAnswer(questionID, q.correctAnswer); });
-  box.appendChild(submit);
+  // Ensure there are four choices; if fewer, pad with empty strings
+  const choices = Array.isArray(q.choices) ? q.choices.slice(0,4) : [];
+  while (choices.length < 4) choices.push('');
 
-  const feedback = document.createElement('p');
-  feedback.id = 'feedback';
-  feedback.setAttribute('role','status');
-  feedback.style.minHeight = '1.2em';
-  box.appendChild(feedback);
+  choices.forEach((choiceText, idx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'choice-btn';
+    btn.setAttribute('aria-label', `Choice ${idx+1}`);
+    // safe insertion of the choice text
+    btn.textContent = choiceText || `Option ${idx+1}`;
+    btn.addEventListener('click', function () {
+      // disable all buttons quickly to prevent double-tap
+      const btns = choicesDiv.querySelectorAll('button');
+      btns.forEach(b => b.disabled = true);
+      handleChoice(questionID, choiceText || `Option ${idx+1}`);
+    });
+    choicesDiv.appendChild(btn);
+  });
 
+  box.appendChild(choicesDiv);
   container.appendChild(box);
-  input.focus();
 }
 
 // If user navigated with a tag param, handle it
 function handleTag(tag) {
-  // If tag is the expected next step, render that question.
-  // If tag equals 'WIN' or similar, show WIN screen.
   if (!tag) {
-    // No tag scanned; show current step's clue or prompt user to scan a tag
+    // No tag: show team summary and either initial clue or status
     const container = document.getElementById('game-content');
     container.innerHTML = "";
-    const welcome = document.createElement('p');
-    welcome.textContent = `Team: ${teamName}`;
-    welcome.style.fontWeight = '600';
-    container.appendChild(welcome);
+    const teamP = document.createElement('p');
+    teamP.textContent = `Team: ${teamName}`;
+    teamP.style.fontWeight = '600';
+    container.appendChild(teamP);
 
-    // If currentStep is Q0, give initial clue
     if (currentStep === 'Q0') {
       const p = document.createElement('p');
       p.textContent = gameData.Q0.clue;
       container.appendChild(p);
     } else if (currentStep === 'WIN') {
-      // show win content
       const h = document.createElement('h2');
       h.textContent = gameData.WIN.title;
       container.appendChild(h);
@@ -389,29 +354,23 @@ function handleTag(tag) {
       c.textContent = gameData.WIN.content;
       container.appendChild(c);
     } else {
-      // show the next question that the team should be at (based on currentStep)
-      // currentStep is the tag the team is expected to scan to get the next question
-      const nextIndex = Math.max(0, gameData.sequence.indexOf(currentStep));
-      const expected = currentStep;
+      // Show instruction
       const note = document.createElement('p');
-      note.textContent = `You are currently at ${expected}. Scan the next tag or use the Start page to restart.`;
+      note.textContent = `You are currently at ${currentStep}. Scan the next tag to answer the next question.`;
       container.appendChild(note);
     }
 
-    // helper link back to start
-    const startLink = document.createElement('a');
-    startLink.href = "start.html";
-    startLink.className = "button-like";
-    startLink.textContent = "Restart / New Team";
-    container.appendChild(startLink);
+    const restart = document.createElement('a');
+    restart.href = "start.html";
+    restart.className = "button-like";
+    restart.textContent = "Restart / New Team";
+    container.appendChild(restart);
     return;
   }
 
-  // Normalize tag param (some tag readers might pass numbers / lower case)
-  const normalizedTag = (String(tag)).toUpperCase();
+  const normalizedTag = String(tag).toUpperCase();
 
-  if (normalizedTag === 'WIN' || normalizedTag === 'Q10' && gameData[normalizedTag]) {
-    // show final or WIN
+  if (normalizedTag === 'WIN') {
     const container = document.getElementById('game-content');
     container.innerHTML = "";
     const h = document.createElement('h2');
@@ -424,16 +383,13 @@ function handleTag(tag) {
     return;
   }
 
-  // If scanned tag equals the next expected tag, render question for that tag
-  // Determine expected next tag for this team
+  // Determine expectedNext tag for this team
   const currentIndex = gameData.sequence.indexOf(currentStep);
   const expectedNext = gameData.sequence[currentIndex + 1] || gameData.sequence[0];
 
   if (normalizedTag === expectedNext) {
-    // Render the question associated with the expectedNext (which is a Q#)
     renderQuestion(normalizedTag);
   } else {
-    // If scanned out-of-order, show informative message
     const container = document.getElementById('game-content');
     container.innerHTML = "";
     const p = document.createElement('p');
@@ -442,23 +398,22 @@ function handleTag(tag) {
     container.appendChild(p);
 
     const hint = document.createElement('p');
-    hint.textContent = "If you believe this is an error, check with the game host or use the Start page to reset.";
+    hint.textContent = "If you believe this is an error, check with the game host or restart from the Start page.";
     container.appendChild(hint);
 
-    const startLink = document.createElement('a');
-    startLink.href = "start.html";
-    startLink.className = "button-like";
-    startLink.textContent = "Restart / New Team";
-    container.appendChild(startLink);
+    const restart = document.createElement('a');
+    restart.href = "start.html";
+    restart.className = "button-like";
+    restart.textContent = "Restart / New Team";
+    container.appendChild(restart);
   }
 }
 
-// initialize UI
+// initialize
 (function init() {
   debug(`Init: team=${teamName} currentStep=${currentStep} tagParam=${tagID || '(none)'}`);
   handleTag(tagID);
 })();
-
 </script>
 </body>
 </html>
